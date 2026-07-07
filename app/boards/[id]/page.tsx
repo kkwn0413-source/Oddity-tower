@@ -137,11 +137,31 @@ export default async function BoardPage({
     team: (team ?? []) as BoardData["team"],
   };
 
+  // 편집 권한 (RLS와 동일 규칙 — UI 노출 판단용)
+  const isDirector = profile.role === "director";
+  let canEdit = isDirector || board.kind === "shared";
+  if (!canEdit && board.kind === "personal") canEdit = board.owner_id === profile.id;
+  if (!canEdit && board.kind === "project" && board.project_id) {
+    const { data: myTask } = await supabase
+      .from("tasks")
+      .select("id")
+      .eq("project_id", board.project_id)
+      .eq("assignee_id", profile.id)
+      .limit(1);
+    canEdit = (myTask ?? []).length > 0;
+  }
+  const canDelete =
+    isDirector ||
+    board.kind === "shared" ||
+    (board.kind === "personal" && board.owner_id === profile.id);
+
   return (
     <BoardView
       data={data}
       meId={profile.id}
-      isDirector={profile.role === "director"}
+      isDirector={isDirector}
+      canEdit={canEdit}
+      canDelete={canDelete}
     />
   );
 }
