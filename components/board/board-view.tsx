@@ -45,12 +45,14 @@ export function BoardView({
   canEdit: boolean;
   canDelete: boolean;
 }) {
-  const { board, meetings, directionLogs, assets, team } = data;
+  const { board, meetings, directionLogs, team } = data;
   const supabase = useMemo(() => createClient(), []);
 
   // 로컬 상태 (낙관적 갱신)
   const [zones, setZones] = useState<BoardZone[]>(data.zones);
   const [images, setImages] = useState<BoardImage[]>(data.images);
+  const [assets, setAssets] = useState(data.assets);
+  const [isShared, setIsShared] = useState(board.shared);
   const [mode, setMode] = useState<ViewMode>("all");
   const [editing, setEditing] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
@@ -302,6 +304,107 @@ export function BoardView({
   }
 
   // ---------------------------------------------------------------------------
+  // 이미지 구역 이동 (재분류)
+  // ---------------------------------------------------------------------------
+  async function moveImage(img: BoardImage) {
+    const others = zones.filter((z) => z.id !== img.zone_id);
+    if (others.length === 0) {
+      alert("이동할 다른 구역이 없습니다. 먼저 존을 추가하세요.");
+      return;
+    }
+    const menu = others.map((z, i) => `${i + 1}. ${z.title}`).join("\n");
+    const pick = window.prompt(`어느 구역으로 옮길까요?\n${menu}\n\n번호 입력:`);
+    if (!pick) return;
+    const idx = parseInt(pick, 10) - 1;
+    const target = others[idx];
+    if (!target) {
+      alert("잘못된 번호입니다.");
+      return;
+    }
+    const maxSort = Math.max(0, ...images.filter((i) => i.zone_id === target.id).map((i) => i.sort_order));
+    const prevZone = img.zone_id;
+    patchImage(img.id, { zone_id: target.id, sort_order: maxSort + 1 });
+    const { error } = await supabase
+      .from("ref_images")
+      .update({ zone_id: target.id, sort_order: maxSort + 1 })
+      .eq("id", img.id);
+    if (error) {
+      patchImage(img.id, { zone_id: prevZone, sort_order: img.sort_order });
+      alert("이동 실패: " + error.message);
+    } else {
+      logEvent("ref.image_moved", { image_id: img.id, from: prevZone, to: target.id });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 파일 링크 (board_assets) CRUD
+  // ---------------------------------------------------------------------------
+  async function addAsset() {
+    const name = window.prompt("링크 이름 (예: 드라이브, 피그마, 견적서)");
+    if (!name?.trim()) return;
+    const url = window.prompt("URL (비워두면 '미연결'로 추가)") ?? "";
+    const value = /^https?:\/\//.test(url.trim()) ? url.trim() : null;
+    const { data: inserted, error } = await supabase
+      .from("board_assets")
+      .insert({
+        board_id: board.id,
+        name: name.trim(),
+        url: value,
+        sort_order: Math.max(0, ...assets.map((a) => a.sort_order)) + 1,
+      })
+      .select()
+      .single();
+    if (error) {
+      alert("링크 추가 실패: " + error.message);
+      return;
+    }
+    setAssets((prev) => [...prev, inserted]);
+    logEvent("asset.added", { asset_id: inserted.id, name: name.trim() });
+  }
+
+  async function editAssetUrl(assetId: string) {
+    const a = assets.find((x) => x.id === assetId);
+    if (!a) return;
+    const url = window.prompt(`"${a.name}" URL`, a.url ?? "");
+    if (url === null) return;
+    const value = /^https?:\/\//.test(url.trim()) ? url.trim() : null;
+    setAssets((prev) => prev.map((x) => (x.id === assetId ? { ...x, url: value } : x)));
+    const { error } = await supabase.from("board_assets").update({ url: value }).eq("id", assetId);
+    if (error) {
+      setAssets((prev) => prev.map((x) => (x.id === assetId ? { ...x, url: a.url } : x)));
+      alert("저장 실패: " + error.message);
+    }
+  }
+
+  async function removeAsset(assetId: string) {
+    const a = assets.find((x) => x.id === assetId);
+    if (!a || !window.confirm(`"${a.name}" 링크를 삭제할까요?`)) return;
+    setAssets((prev) => prev.filter((x) => x.id !== assetId));
+    const { error } = await supabase.from("board_assets").delete().eq("id", assetId);
+    if (error) {
+      setAssets((prev) => [...prev, a]);
+      alert("삭제 실패: " + error.message);
+    } else {
+      logEvent("asset.removed", { name: a.name });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 개인 수집함 공개 토글 (소유자)
+  // ---------------------------------------------------------------------------
+  async function toggleShared() {
+    const next = !isShared;
+    setIsShared(next);
+    const { error } = await supabase.from("boards").update({ shared: next }).eq("id", board.id);
+    if (error) {
+      setIsShared(!next);
+      alert("변경 실패: " + error.message);
+    } else {
+      logEvent("board.shared_toggled", { shared: next });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // 접근 제한 (director — 인원별 자료 한정)
   // ---------------------------------------------------------------------------
   async function saveAccess(nextAccess: string, nextMembers: Set<string>) {
@@ -433,12 +536,17 @@ export function BoardView({
             {board.title}
           </h1>
           <span className="font-mono text-xs text-board-mut">
-            {board.kind === "project" ? "프로젝트 보드" : board.kind === "shared" ? "공용 보드" : `개인 수집함${board.shared ? " · 공개" : ""}`}
+            {board.kind === "project" ? "프로젝트 보드" : board.kind === "shared" ? "공용 보드" : `개인 수집함${isShared ? " · 공개" : ""}`}
             {" · "}
             {visible.filter((v) => !v.hidden).length}장
             {busy === "upload" && <span className="ml-2 text-gold-bright">업로드 중...</span>}
           </span>
           <div className="ml-auto flex flex-wrap gap-2">
+            {board.kind === "personal" && board.owner_id === meId && (
+              <PillBtn on={isShared} onClick={toggleShared}>
+                {isShared ? "전체 공개 중" : "비공개"}
+              </PillBtn>
+            )}
             <PillBtn on={mode === "stars"} onClick={() => setMode(mode === "stars" ? "all" : "stars")}>
               ★ 별표만
             </PillBtn>
@@ -714,8 +822,27 @@ export function BoardView({
                   ) : (
                     <span className="text-[11px] text-board-mut/40">링크 미연결</span>
                   )}
+                  {canEdit && (
+                    <span className="ml-auto flex gap-1.5">
+                      <ZoneTool onClick={() => editAssetUrl(a.id)} title="URL 연결/수정">
+                        {a.url ? "수정" : "연결"}
+                      </ZoneTool>
+                      <ZoneTool onClick={() => removeAsset(a.id)} title="삭제">✕</ZoneTool>
+                    </span>
+                  )}
                 </div>
               ))}
+              {assets.length === 0 && (
+                <p className="border-t border-board-line py-3 text-sm text-board-mut">등록된 링크가 없습니다.</p>
+              )}
+              {canEdit && (
+                <button
+                  onClick={addAsset}
+                  className="mt-2 rounded-full border border-board-line px-3 py-1 text-[11.5px] text-board-mut hover:border-gold-bright hover:text-gold-bright"
+                >
+                  ＋ 링크 추가
+                </button>
+              )}
             </div>
           )}
         </section>
@@ -798,6 +925,7 @@ export function BoardView({
                       onStar={() => toggleStar(img)}
                       onHide={() => toggleHidden(img)}
                       onMemo={() => editMemo(img)}
+                      onMove={() => moveImage(img)}
                       onRemove={() => removeImage(img)}
                       onVerdict={(v) => setVerdict(img, v)}
                     />
@@ -961,6 +1089,7 @@ function Card({
   onStar,
   onHide,
   onMemo,
+  onMove,
   onRemove,
   onVerdict,
 }: {
@@ -973,6 +1102,7 @@ function Card({
   onStar: () => void;
   onHide: () => void;
   onMemo: () => void;
+  onMove: () => void;
   onRemove: () => void;
   onVerdict: (v: "good" | "bad" | null) => void;
 }) {
@@ -1006,6 +1136,7 @@ function Card({
             {img.hidden ? "👁" : "🙈"}
           </Tb>
           <Tb on={!!img.memo} onClick={onMemo} title="메모">✎</Tb>
+          <Tb on={false} onClick={onMove} title="구역 이동">⇄</Tb>
           {isDirector && (
             <>
               <Tb on={img.verdict === "good"} onClick={() => onVerdict("good")} title="좋음 판정" tone="good">✓</Tb>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { CreateMyBoard } from "@/components/board/create-my-board";
 
 /** 보드 허브 — 프로젝트 보드 / 공유 보드 / 내 보드 / 공유된 개인 보드 */
 export default async function BoardsPage() {
@@ -98,11 +99,22 @@ export default async function BoardsPage() {
       </div>
       <Section title="프로젝트 보드" items={projectBoards} />
       <Section title="공용 보드" hint="전 인원 공동 편집" items={sharedBoards} />
-      <Section
-        title="내 수집함"
-        hint="개인 공간 — 공개 토글 시 전체 열람 가능"
-        items={myBoards}
-      />
+      {myBoards.length > 0 ? (
+        <Section
+          title="내 수집함"
+          hint="개인 공간 — 공개 토글 시 전체 열람 가능"
+          items={myBoards}
+        />
+      ) : (
+        <section>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-navy/40">
+            내 수집함
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <CreateMyBoard meId={profile.id} meName={profile.name} />
+          </div>
+        </section>
+      )}
       <Section
         title="팀원 수집함"
         hint="공개 설정된 개인 보드"
