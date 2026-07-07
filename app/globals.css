@@ -29,6 +29,16 @@
   --font-sans:
     "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", system-ui,
     -apple-system, sans-serif;
+
+  /* 보드 다크 테마 (v17 계승 — 액센트만 하우스 골드 밝힘값) */
+  --color-board-bg: #141416;
+  --color-board-panel: #1c1c20;
+  --color-board-line: #2a2a30;
+  --color-board-ink: #edeae4;
+  --color-board-mut: #8b8894;
+  --color-gold-bright: #c9a868;
+  --color-verdict-good: #4caf7d;
+  --color-verdict-bad: #e06c5c;
 }
 
 html {

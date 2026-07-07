@@ -998,6 +998,15 @@ export type Database = {
         Args: { p_image_id: string; p_memo?: string; p_verdict: string }
         Returns: undefined
       }
+      team_directory: {
+        Args: never
+        Returns: {
+          color: string
+          id: string
+          name: string
+          role: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
