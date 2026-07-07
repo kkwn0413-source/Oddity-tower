@@ -157,6 +157,57 @@ async function main() {
     .eq("type", "ref.verdict");
   check("판정 이벤트 기록됨", (ev ?? []).length >= 1);
 
+  console.log("\n— 보드 접근 (7a) —");
+  const { data: hanaBoards } = await hana.from("boards").select("kind, title, shared");
+  const kinds = (hanaBoards ?? []).map((b) => `${b.kind}:${b.title}`).sort();
+  check(
+    "박한나: 배정 프로젝트 보드 3 + 공유 1 + 본인 개인 1만",
+    (hanaBoards ?? []).length === 5 &&
+      !kinds.some((k) => k.includes("김오디") || k.includes("이준") || k.includes("최서우") || k.includes("쇼룸")),
+    kinds.join(", "),
+  );
+
+  const { data: junSeesHana } = await (await signIn("kkwn0413+jun@gmail.com"))
+    .from("boards")
+    .select("title")
+    .eq("title", "박한나 수집함");
+  check("이준: 공유 설정된 박한나 개인 보드 열람 가능", (junSeesHana ?? []).length === 1);
+
+  const { data: hanaMeetings } = await hana.from("meetings").select("round, title");
+  check("박한나: ZONE2 회의록 2건 열람", (hanaMeetings ?? []).length === 2);
+
+  // 첨삭 코멘트 작성 (열람자 누구나)
+  const { error: cmErr } = await hana.from("meeting_comments").insert({
+    meeting_id: (await hana.from("meetings").select("id").eq("round", 1).single()).data!.id,
+    author_id: (await hana.auth.getUser()).data.user!.id,
+    body: "RLS 테스트 첨삭",
+  });
+  check("박한나: 회의록 첨삭 작성 가능", !cmErr, cmErr?.message);
+
+  // save_meeting RPC (이력 스냅샷)
+  const m2 = (await hana.from("meetings").select("id, title, met_at, body").eq("round", 2).single()).data!;
+  const { error: smErr } = await hana.rpc("save_meeting", {
+    p_meeting_id: m2.id,
+    p_title: m2.title,
+    p_met_at: m2.met_at,
+    p_body: (m2.body ?? "") + " (수정 테스트)",
+    p_items: [{ kind: "keep", body: "박스 구조 B안 유지" }],
+  });
+  check("save_meeting RPC 성공", !smErr, smErr?.message);
+  const { data: revs } = await hana.from("meeting_revisions").select("id").eq("meeting_id", m2.id);
+  check("수정 이력 스냅샷 생성", (revs ?? []).length >= 1);
+
+  // events 공유: 참여자는 보드 이벤트 열람, 단가·선발주 유형 차단
+  const { data: hanaEvents } = await hana.from("events").select("type");
+  check(
+    "박한나: 이벤트 열람 가능 (meeting.saved 포함)",
+    (hanaEvents ?? []).some((e) => e.type === "meeting.saved"),
+  );
+  check(
+    "박한나: proc./finance. 이벤트 0건",
+    !(hanaEvents ?? []).some((e) => e.type.startsWith("proc.") || e.type.startsWith("finance.")),
+  );
+
   console.log(`\n결과: ${pass} 통과 / ${fail} 실패`);
   if (fail > 0) process.exit(1);
 }

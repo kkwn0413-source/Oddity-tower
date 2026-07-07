@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      _migrations: {
+        Row: {
+          applied_at: string
+          name: string
+        }
+        Insert: {
+          applied_at?: string
+          name: string
+        }
+        Update: {
+          applied_at?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      board_assets: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          url: string | null
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          url?: string | null
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_assets_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      boards: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          owner_id: string | null
+          project_id: string | null
+          shared: boolean
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          owner_id?: string | null
+          project_id?: string | null
+          shared?: boolean
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          owner_id?: string | null
+          project_id?: string | null
+          shared?: boolean
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boards_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boards_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           created_at: string
@@ -132,6 +227,7 @@ export type Database = {
       events: {
         Row: {
           actor_id: string | null
+          board_id: string | null
           created_at: string
           id: number
           payload: Json
@@ -141,6 +237,7 @@ export type Database = {
         }
         Insert: {
           actor_id?: string | null
+          board_id?: string | null
           created_at?: string
           id?: never
           payload?: Json
@@ -150,6 +247,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string | null
+          board_id?: string | null
           created_at?: string
           id?: never
           payload?: Json
@@ -188,6 +286,173 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          meeting_id: string
+          resolved: boolean
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          meeting_id: string
+          resolved?: boolean
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          resolved?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_comments_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_items: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          kind: string
+          meeting_id: string
+          sort_order: number
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          kind: string
+          meeting_id: string
+          sort_order?: number
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          meeting_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_revisions: {
+        Row: {
+          created_at: string
+          edited_by: string | null
+          id: number
+          meeting_id: string
+          snapshot: Json
+        }
+        Insert: {
+          created_at?: string
+          edited_by?: string | null
+          id?: never
+          meeting_id: string
+          snapshot: Json
+        }
+        Update: {
+          created_at?: string
+          edited_by?: string | null
+          id?: never
+          meeting_id?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_revisions_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_revisions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          author_id: string
+          board_id: string
+          body: string | null
+          created_at: string
+          id: string
+          met_at: string
+          round: number
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          board_id: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          met_at: string
+          round: number
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          board_id?: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          met_at?: string
+          round?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
             referencedColumns: ["id"]
           },
         ]
@@ -473,32 +738,35 @@ export type Database = {
       }
       ref_zones: {
         Row: {
+          batch_label: string | null
+          board_id: string
           created_at: string
           id: string
-          project_id: string
           sort_order: number
           title: string
         }
         Insert: {
+          batch_label?: string | null
+          board_id: string
           created_at?: string
           id?: string
-          project_id: string
           sort_order?: number
           title: string
         }
         Update: {
+          batch_label?: string | null
+          board_id?: string
           created_at?: string
           id?: string
-          project_id?: string
           sort_order?: number
           title?: string
         }
         Relationships: [
           {
-            foreignKeyName: "ref_zones_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "ref_zones_board_id_fkey"
+            columns: ["board_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "boards"
             referencedColumns: ["id"]
           },
         ]
@@ -701,6 +969,10 @@ export type Database = {
     Functions: {
       can_access_task: { Args: { p_task_id: string }; Returns: boolean }
       can_access_zone: { Args: { p_zone_id: string }; Returns: boolean }
+      can_delete_on_board: { Args: { p_board_id: string }; Returns: boolean }
+      can_edit_board: { Args: { p_board_id: string }; Returns: boolean }
+      can_edit_zone: { Args: { p_zone_id: string }; Returns: boolean }
+      can_view_board: { Args: { p_board_id: string }; Returns: boolean }
       is_assigned_to_client: { Args: { p_client_id: string }; Returns: boolean }
       is_assigned_to_project: {
         Args: { p_project_id: string }
@@ -708,6 +980,16 @@ export type Database = {
       }
       is_director: { Args: never; Returns: boolean }
       is_system_context: { Args: never; Returns: boolean }
+      save_meeting: {
+        Args: {
+          p_body: string
+          p_items: Json
+          p_meeting_id: string
+          p_met_at: string
+          p_title: string
+        }
+        Returns: undefined
+      }
       set_direction_status: {
         Args: { p_log_id: string; p_status: string }
         Returns: undefined

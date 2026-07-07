@@ -67,8 +67,14 @@ async function wipe() {
     ["personal_notes", "id"],
     ["proc_items", "id"],
     ["direction_logs", "id"],
+    ["meeting_comments", "id"],
+    ["meeting_revisions", "id"],
+    ["meeting_items", "id"],
+    ["meetings", "id"],
+    ["board_assets", "id"],
     ["ref_images", "id"],
     ["ref_zones", "id"],
+    ["boards", "id"],
     ["share_links", "id"],
     ["comments", "id"],
     ["task_files", "id"],
@@ -177,11 +183,26 @@ async function main() {
     { task_id: tByName.get("캐릭터 리파인"), fee: 700000, withholding: false },
   ]);
 
-  console.log("[5/6] 레퍼런스 보드 (ZONE2)");
+  console.log("[5/6] 보드 (프로젝트/개인/공유) + 레퍼런스");
+  const boards = await insert("boards", [
+    { kind: "project", project_id: pZone, title: "존2 패키지 리뉴얼" },
+    { kind: "project", project_id: pCard, title: "카드웍스 브로슈어" },
+    { kind: "project", project_id: pPeng, title: "펭귄 캐릭터 굿즈" },
+    { kind: "project", project_id: pInt, title: "쇼룸 인테리어 그래픽" },
+    { kind: "shared", title: "오디티 공용 보드" },
+    { kind: "personal", owner_id: uid.director, title: "김오디 수집함" },
+    { kind: "personal", owner_id: uid.hana, title: "박한나 수집함", shared: true },
+    { kind: "personal", owner_id: uid.jun, title: "이준 수집함" },
+    { kind: "personal", owner_id: uid.seo, title: "최서우 수집함" },
+  ]);
+  const bZone = boards[0].id;
+  const bShared = boards[4].id;
+  const bHana = boards[6].id;
+
   const zones = await insert("ref_zones", [
-    { project_id: pZone, title: "무드·톤", sort_order: 1 },
-    { project_id: pZone, title: "패키지 구조", sort_order: 2 },
-    { project_id: pZone, title: "타이포·로고", sort_order: 3 },
+    { board_id: bZone, title: "무드·톤", sort_order: 1, batch_label: "26.06.24 · 킥오프 수집" },
+    { board_id: bZone, title: "패키지 구조", sort_order: 2, batch_label: "26.07.06 · 시안 수령" },
+    { board_id: bZone, title: "타이포·로고", sort_order: 3 },
   ]);
   const [zMood, zStruct, zType] = zones.map((z) => z.id);
   const now = new Date().toISOString();
@@ -204,6 +225,48 @@ async function main() {
     { zone_id: zType, uploader_id: uid.seo, kind: "url", url: pic("oddity-t2", 800, 900), sort_order: 2,
       verdict: "bad", verdict_memo: "장식성이 과해서 라벨 소형 사이즈에서 뭉개짐. 획 대비 낮은 쪽으로.", verdict_by: uid.director, verdict_at: now },
     { zone_id: zType, uploader_id: uid.hana, kind: "url", url: pic("oddity-t3", 800, 1100), sort_order: 3 },
+  ]);
+
+  // 공유 보드 + 개인 보드(박한나, shared=true) 콘텐츠
+  const [zShared] = await insert("ref_zones", [
+    { board_id: bShared, title: "하우스 공용 무드", sort_order: 1 },
+  ]);
+  const [zHana] = await insert("ref_zones", [
+    { board_id: bHana, title: "종이 질감 수집", sort_order: 1 },
+  ]);
+  await insert("ref_images", [
+    { zone_id: zShared.id, uploader_id: uid.director, kind: "url", url: pic("oddity-shared1", 800, 1000), memo: "하우스 기본 톤 기준", sort_order: 1 },
+    { zone_id: zShared.id, uploader_id: uid.jun, kind: "url", url: pic("oddity-shared2", 800, 700), sort_order: 2 },
+    { zone_id: zHana.id, uploader_id: uid.hana, kind: "url", url: pic("oddity-hana1", 800, 1100), starred: true, memo: "코튼지 압인 샘플", sort_order: 1 },
+  ]);
+
+  // 차수별 회의록 (ZONE2 보드) — 유지/추가/제거 항목 + 첨삭 코멘트
+  const [m1] = await insert("meetings", [
+    { board_id: bZone, round: 1, title: "킥오프 — 방향 정리", met_at: "2026-06-24", author_id: uid.director,
+      body: "프리미엄 라인 리뉴얼 킥오프. 기존 패키지 대비 톤 정리가 핵심." },
+  ]);
+  await insert("meeting_items", [
+    { meeting_id: m1.id, kind: "add", body: "네이비+골드 프리미엄 무드 기준 확정", sort_order: 0 },
+    { meeting_id: m1.id, kind: "add", body: "합지 박스 구조 후보 3종 수집", sort_order: 1 },
+    { meeting_id: m1.id, kind: "note", body: "다음 미팅까지 라벨 시안 2안 준비 (박한나)", sort_order: 2 },
+  ]);
+  const [m2] = await insert("meetings", [
+    { board_id: bZone, round: 2, title: "1차 시안 리뷰", met_at: "2026-07-06", author_id: uid.director,
+      body: "구조 B안 채택. 라벨 마감 방향 변경." },
+  ]);
+  await insert("meeting_items", [
+    { meeting_id: m2.id, kind: "keep", body: "박스 구조 B안 유지 — 뚜껑 결합부 그대로", sort_order: 0 },
+    { meeting_id: m2.id, kind: "remove", body: "전면 유광 코팅 제외", sort_order: 1 },
+    { meeting_id: m2.id, kind: "add", body: "무광 베이스 + 로고 스팟 UV로 변경", sort_order: 2 },
+  ]);
+  await insert("meeting_comments", [
+    { meeting_id: m2.id, author_id: uid.hana, body: "스팟 UV 범위가 로고만인지 패턴까지인지 확인 필요합니다." },
+  ]);
+
+  // 보드 파일 링크
+  await insert("board_assets", [
+    { board_id: bZone, name: "드라이브", url: "https://drive.google.com/drive/folders/example", sort_order: 0 },
+    { board_id: bZone, name: "피그마", url: null, sort_order: 1 },
   ]);
 
   // 방향 로그 3건 — 1건은 supersedes 이력 (L3가 L2를 대체, trigger가 L2를 superseded 처리)
