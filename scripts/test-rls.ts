@@ -208,6 +208,48 @@ async function main() {
     !(hanaEvents ?? []).some((e) => e.type.startsWith("proc.") || e.type.startsWith("finance.")),
   );
 
+  console.log("\n— 보드 접근 제한 (0006) —");
+  const { data: zoneBoard } = await director
+    .from("boards")
+    .select("id")
+    .eq("kind", "project")
+    .limit(1)
+    .single();
+  const junId = (await (await signIn("kkwn0413+jun@gmail.com")).auth.getUser()).data.user!.id;
+
+  // ZONE2 보드를 이준만 보게 제한
+  const { error: raErr } = await director.rpc("set_board_access", {
+    p_board_id: zoneBoard!.id,
+    p_access: "restricted",
+    p_member_ids: [junId],
+  });
+  check("director 접근 제한 설정(이준만)", !raErr, raErr?.message);
+
+  const { data: hanaSees } = await hana.from("boards").select("id").eq("id", zoneBoard!.id);
+  check("박한나(배정자): 제한된 보드 비노출", (hanaSees ?? []).length === 0);
+  const { data: hanaZones } = await hana.from("ref_zones").select("id").eq("board_id", zoneBoard!.id);
+  check("박한나: 제한된 보드의 존/이미지도 차단", (hanaZones ?? []).length === 0);
+
+  const jun = await signIn("kkwn0413+jun@gmail.com");
+  const { data: junSees } = await jun.from("boards").select("id").eq("id", zoneBoard!.id);
+  check("이준(지정 인원): 열람 가능", (junSees ?? []).length === 1);
+
+  const { error: hanaRaErr } = await hana.rpc("set_board_access", {
+    p_board_id: zoneBoard!.id,
+    p_access: "default",
+    p_member_ids: [],
+  });
+  check("freelancer 접근 설정 변경 차단", !!hanaRaErr);
+
+  // 원복
+  await director.rpc("set_board_access", {
+    p_board_id: zoneBoard!.id,
+    p_access: "default",
+    p_member_ids: [],
+  });
+  const { data: hanaAgain } = await hana.from("boards").select("id").eq("id", zoneBoard!.id);
+  check("기본 규칙 복귀 후 박한나 재열람", (hanaAgain ?? []).length === 1);
+
   console.log(`\n결과: ${pass} 통과 / ${fail} 실패`);
   if (fail > 0) process.exit(1);
 }

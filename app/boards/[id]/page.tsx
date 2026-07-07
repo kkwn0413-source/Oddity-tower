@@ -106,6 +106,12 @@ export default async function BoardPage({
     });
   }
 
+  // 접근 제한 멤버 목록 (RLS: director는 전체, 그 외엔 본인 row만 — UI는 director 전용)
+  const { data: members } = await supabase
+    .from("board_members")
+    .select("user_id")
+    .eq("board_id", id);
+
   const data: BoardData = {
     board: {
       id: board.id,
@@ -114,6 +120,8 @@ export default async function BoardPage({
       owner_id: board.owner_id,
       title: board.title,
       shared: board.shared,
+      access: board.access,
+      memberIds: (members ?? []).map((m) => m.user_id),
       projectCode: projectInfo.data?.code ?? null,
     },
     zones: zones ?? [],

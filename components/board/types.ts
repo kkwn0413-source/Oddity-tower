@@ -7,6 +7,8 @@ export type BoardInfo = {
   owner_id: string | null;
   title: string;
   shared: boolean;
+  access: "default" | "restricted" | string;
+  memberIds: string[]; // access='restricted'일 때 지정 인원 (director만 채워짐)
   projectCode?: string | null;
 };
 

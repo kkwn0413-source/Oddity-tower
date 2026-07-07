@@ -58,6 +58,9 @@ export function BoardView({
   const [infoTab, setInfoTab] = useState<"meetings" | "logs" | "assets">("meetings");
   const [infoOpen, setInfoOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [accessOpen, setAccessOpen] = useState(false);
+  const [access, setAccess] = useState<string>(board.access);
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set(board.memberIds));
 
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadZone = useRef<string | null>(null);
@@ -299,6 +302,25 @@ export function BoardView({
   }
 
   // ---------------------------------------------------------------------------
+  // 접근 제한 (director — 인원별 자료 한정)
+  // ---------------------------------------------------------------------------
+  async function saveAccess(nextAccess: string, nextMembers: Set<string>) {
+    const prev = { access, members: new Set(memberIds) };
+    setAccess(nextAccess);
+    setMemberIds(new Set(nextMembers));
+    const { error } = await supabase.rpc("set_board_access", {
+      p_board_id: board.id,
+      p_access: nextAccess,
+      p_member_ids: [...nextMembers],
+    });
+    if (error) {
+      setAccess(prev.access);
+      setMemberIds(prev.members);
+      alert("접근 설정 저장 실패: " + error.message);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // 존 mutations
   // ---------------------------------------------------------------------------
   async function addZone() {
@@ -433,6 +455,11 @@ export function BoardView({
                 </PillBtn>
               </>
             )}
+            {isDirector && (
+              <PillBtn on={accessOpen || access === "restricted"} onClick={() => setAccessOpen(!accessOpen)}>
+                {access === "restricted" ? `🔒 지정 ${memberIds.size}명` : "접근 관리"}
+              </PillBtn>
+            )}
             {canEdit && (
               <PillBtn on={editing} onClick={() => { setEditing(!editing); if (editing) setShowHidden(false); }}>
                 {editing ? "편집 완료" : "편집"}
@@ -446,6 +473,79 @@ export function BoardView({
             </Link>
           </div>
         </div>
+        {/* 접근 관리 패널 (director) */}
+        {isDirector && accessOpen && (
+          <div className="mx-auto max-w-[1600px] px-5 pb-1 pt-2.5">
+            <div className="rounded-xl border border-gold-bright/30 bg-board-panel px-4 py-3.5">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[13px] font-bold">이 보드를 볼 수 있는 인원</span>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => saveAccess("default", memberIds)}
+                    className={
+                      "rounded-full border px-3 py-1 text-[11.5px] " +
+                      (access === "default"
+                        ? "border-gold-bright bg-gold-bright font-bold text-board-bg"
+                        : "border-board-line text-board-mut hover:text-board-ink")
+                    }
+                  >
+                    기본 규칙 (자동)
+                  </button>
+                  <button
+                    onClick={() => saveAccess("restricted", memberIds)}
+                    className={
+                      "rounded-full border px-3 py-1 text-[11.5px] " +
+                      (access === "restricted"
+                        ? "border-gold-bright bg-gold-bright font-bold text-board-bg"
+                        : "border-board-line text-board-mut hover:text-board-ink")
+                    }
+                  >
+                    🔒 지정 인원만
+                  </button>
+                </div>
+                <span className="text-[11px] text-board-mut">
+                  {access === "default"
+                    ? board.kind === "project"
+                      ? "이 프로젝트에 태스크가 배정된 인원 전원"
+                      : board.kind === "shared"
+                        ? "전 인원"
+                        : "소유자" + (board.shared ? " + 전 인원(공개)" : "만")
+                    : "아래 체크된 인원만 열람·편집 (대표는 항상 접근)"}
+                </span>
+              </div>
+              {access === "restricted" && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {team
+                    .filter((t) => t.role !== "director")
+                    .map((t) => {
+                      const on = memberIds.has(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => {
+                            const next = new Set(memberIds);
+                            if (on) next.delete(t.id);
+                            else next.add(t.id);
+                            saveAccess("restricted", next);
+                          }}
+                          className={
+                            "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors " +
+                            (on
+                              ? "border-gold-bright/60 bg-gold-bright/15 text-board-ink"
+                              : "border-board-line text-board-mut hover:text-board-ink")
+                          }
+                        >
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: t.color }} />
+                          {t.name}
+                          {on && <span className="text-gold-bright">✓</span>}
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {mode !== "verdict" && (
           <nav className="mx-auto flex max-w-[1600px] gap-2 overflow-x-auto px-5 py-2.5 [scrollbar-width:none]">
             {zones.map((z, i) => (

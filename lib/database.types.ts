@@ -64,8 +64,52 @@ export type Database = {
           },
         ]
       }
+      board_members: {
+        Row: {
+          added_by: string | null
+          board_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          board_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          board_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_members_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_members_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boards: {
         Row: {
+          access: string
           created_at: string
           id: string
           kind: string
@@ -75,6 +119,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          access?: string
           created_at?: string
           id?: string
           kind: string
@@ -84,6 +129,7 @@ export type Database = {
           title: string
         }
         Update: {
+          access?: string
           created_at?: string
           id?: string
           kind?: string
@@ -988,6 +1034,10 @@ export type Database = {
           p_met_at: string
           p_title: string
         }
+        Returns: undefined
+      }
+      set_board_access: {
+        Args: { p_access: string; p_board_id: string; p_member_ids: string[] }
         Returns: undefined
       }
       set_direction_status: {

@@ -70,6 +70,11 @@ export default async function BoardsPage() {
                     공개
                   </span>
                 )}
+                {b.access === "restricted" && (
+                  <span className="rounded bg-navy/8 px-1.5 py-0.5 text-[10px] font-bold text-navy/60">
+                    🔒 지정 인원
+                  </span>
+                )}
                 <span className="truncate text-[15px] font-semibold text-navy group-hover:text-gold">
                   {b.title}
                 </span>
