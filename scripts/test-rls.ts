@@ -27,21 +27,16 @@ function check(name: string, ok: boolean, detail = "") {
   }
 }
 
-/** 이메일로 실제 로그인 세션 클라이언트 생성 (generateLink → verifyOtp) */
+/** 이메일+비밀번호로 실제 로그인 세션 클라이언트 생성 */
 async function signIn(email: string) {
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: "magiclink",
-    email,
-  });
-  if (error) throw error;
   const client = createClient(URL, ANON, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const { error: e2 } = await client.auth.verifyOtp({
-    type: "email",
-    token_hash: data.properties.hashed_token,
+  const { error } = await client.auth.signInWithPassword({
+    email,
+    password: env.SEED_USER_PASSWORD || "oddity1234",
   });
-  if (e2) throw e2;
+  if (error) throw error;
   return client;
 }
 

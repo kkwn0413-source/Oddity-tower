@@ -28,6 +28,9 @@ const USERS = [
 
 type UserKey = (typeof USERS)[number]["key"];
 
+/** 개발용 초기 비밀번호 — .env.local의 SEED_USER_PASSWORD로 재정의 가능 */
+const SEED_PASSWORD = env.SEED_USER_PASSWORD || "oddity1234";
+
 async function ensureUsers(): Promise<Record<UserKey, string>> {
   const { data, error } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (error) throw error;
@@ -38,10 +41,16 @@ async function ensureUsers(): Promise<Record<UserKey, string>> {
     const existing = byEmail.get(u.email.toLowerCase());
     if (existing) {
       ids[u.key] = existing;
+      // 비밀번호 로그인 전환 — 기존 계정에도 초기 비밀번호 보장
+      const { error: e } = await sb.auth.admin.updateUserById(existing, {
+        password: SEED_PASSWORD,
+      });
+      if (e) throw e;
       continue;
     }
     const { data: created, error: e } = await sb.auth.admin.createUser({
       email: u.email,
+      password: SEED_PASSWORD,
       email_confirm: true,
     });
     if (e) throw e;
@@ -227,6 +236,7 @@ async function main() {
   console.log("✅ 시드 완료");
   console.log("   director:", USERS[0].email);
   console.log("   freelancers:", USERS.slice(1).map((u) => u.email).join(", "));
+  console.log("   초기 비밀번호:", SEED_PASSWORD);
 }
 
 main().catch((e) => {
