@@ -1,26 +1,52 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* =============================================================================
+   오디티하우스 컨트롤타워 — 디자인 토큰 (하우스 스타일)
+   내부 툴: 라이트 전용 (다크모드 없음)
+   ============================================================================= */
+
+@theme {
+  /* 브랜드 */
+  --color-navy: #0b1530; /* 헤더, 주 텍스트 */
+  --color-gold: #b8965a; /* 액센트, 마일스톤, 대표 전용 요소 */
+
+  /* 표면 */
+  --color-bg: #f6f4ef; /* 배경 */
+  --color-card: #ffffff; /* 카드 */
+
+  /* 상태/경고 */
+  --color-danger: #d64545; /* 마감 임박 ⚠, 마지노선 경과 */
+  --color-warn: #e08a3c; /* 7일 이내 주황 */
+
+  /* 작업자 팔레트
+     대표(director) = gold, 프리랜서 = 아래 4색을 profiles.color 에 자동 배정 */
+  --color-worker-1: #1d9e75;
+  --color-worker-2: #7f77dd;
+  --color-worker-3: #d8643a;
+  --color-worker-4: #2e7fb8;
+
+  /* 타이포 */
+  --font-sans:
+    "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", system-ui,
+    -apple-system, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  background: var(--color-bg);
+  color: var(--color-navy);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 얇은 스크롤바 (타임라인 가로 스크롤 등) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-navy) 25%, transparent)
+    transparent;
 }
