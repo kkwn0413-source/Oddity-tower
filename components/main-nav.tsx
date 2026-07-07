@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/", label: "타임라인" },
-  { href: "/me", label: "내 작업" },
-  { href: "/admin/share", label: "공유 링크" },
+  { href: "/", label: "타임라인", directorOnly: false },
+  { href: "/me", label: "내 작업", directorOnly: false },
+  { href: "/admin/share", label: "공유 링크", directorOnly: true },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -14,11 +14,14 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function MainNav() {
+export function MainNav({ role }: { role: "director" | "freelancer" | string }) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter(
+    (i) => !i.directorOnly || role === "director",
+  );
   return (
     <nav className="hidden items-center gap-1 sm:flex">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link
@@ -29,7 +32,7 @@ export function MainNav() {
               "rounded-md px-3 py-1.5 text-sm transition-colors " +
               (active
                 ? "bg-white/10 text-white"
-                : "text-white/60 hover:text-white hover:bg-white/5")
+                : "text-white/60 hover:bg-white/5 hover:text-white")
             }
           >
             {item.label}
