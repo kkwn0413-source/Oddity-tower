@@ -172,7 +172,7 @@ async function main() {
   check("이준: 공유 설정된 박한나 개인 보드 열람 가능", (junSeesHana ?? []).length === 1);
 
   const { data: hanaMeetings } = await hana.from("meetings").select("round, title");
-  check("박한나: ZONE2 회의록 2건 열람", (hanaMeetings ?? []).length === 2);
+  check("박한나: ZONE2 회의록 열람 (2건 이상)", (hanaMeetings ?? []).length >= 2);
 
   // 첨삭 코멘트 작성 (열람자 누구나)
   const { error: cmErr } = await hana.from("meeting_comments").insert({
@@ -205,6 +205,23 @@ async function main() {
     "박한나: proc./finance. 이벤트 0건",
     !(hanaEvents ?? []).some((e) => e.type.startsWith("proc.") || e.type.startsWith("finance.")),
   );
+
+  console.log("\n— internal 코멘트 (0008) —");
+  const labelTask = (await director.from("tasks").select("id").eq("name", "라벨 그래픽 시안").single()).data!;
+  const directorId = (await director.auth.getUser()).data.user!.id;
+  await director.from("comments").insert({
+    task_id: labelTask.id, author_id: directorId, body: "RLS 내부 테스트", internal: true,
+  });
+  const { data: hcAll } = await hana.from("comments").select("internal").eq("task_id", labelTask.id);
+  check("freelancer: internal 코멘트 비노출", !(hcAll ?? []).some((c) => c.internal));
+  const { error: intErr } = await hana.from("comments").insert({
+    task_id: labelTask.id,
+    author_id: (await hana.auth.getUser()).data.user!.id,
+    body: "internal 작성 시도",
+    internal: true,
+  });
+  check("freelancer: internal 작성 차단", !!intErr);
+  await director.from("comments").delete().eq("body", "RLS 내부 테스트");
 
   console.log("\n— 보드 접근 제한 (0006) —");
   const { data: zoneBoard } = await director

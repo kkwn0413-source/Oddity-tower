@@ -38,6 +38,7 @@ export default async function HomePage() {
     <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">
       <Timeline
         data={data}
+        meId={profile.id}
         isDirector={profile.role === "director"}
       />
     </div>

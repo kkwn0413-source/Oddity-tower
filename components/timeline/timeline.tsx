@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { TaskPanel, type PanelMode } from "./task-panel";
 import {
   addDays,
   ddayLabel,
@@ -46,9 +49,11 @@ type Row =
 
 export function Timeline({
   data,
+  meId,
   isDirector,
 }: {
   data: TimelineData;
+  meId: string;
   isDirector: boolean;
 }) {
   const [zoom, setZoom] = useState<Zoom>("day");
@@ -56,6 +61,8 @@ export function Timeline({
   const [workerFilter, setWorkerFilter] = useState<string | null>(null);
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [panel, setPanel] = useState<PanelMode | null>(null);
+  const router = useRouter();
 
   const base = today();
   const dayW = ZOOMS[zoom];
@@ -398,7 +405,48 @@ export function Timeline({
           )}
         </div>
 
-        <div className="flex rounded-lg border border-navy/10 bg-card p-0.5">
+        <div className="flex items-center gap-2">
+          {isDirector && (
+            <>
+              <button
+                onClick={() => setPanel({ type: "create" })}
+                className="rounded-lg bg-navy px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+              >
+                + 태스크
+              </button>
+              <button
+                onClick={async () => {
+                  const supabase = createClient();
+                  const clientMenu = data.clients.map((c, i) => `${i + 1}. ${c.name}`).join("\n");
+                  const pick = window.prompt(`어느 업체의 프로젝트인가요?\n${clientMenu}\n\n번호 입력:`);
+                  if (!pick) return;
+                  const client = data.clients[parseInt(pick, 10) - 1];
+                  if (!client) return alert("잘못된 번호입니다.");
+                  const pname = window.prompt("프로젝트 이름");
+                  if (!pname?.trim()) return;
+                  const code = window.prompt("프로젝트 코드 (파일 네이밍용, 예: ZONE2)")?.trim().toUpperCase();
+                  if (!code) return;
+                  const { data: proj, error } = await supabase
+                    .from("projects")
+                    .insert({ client_id: client.id, name: pname.trim(), code })
+                    .select()
+                    .single();
+                  if (error) return alert("생성 실패: " + error.message);
+                  // 프로젝트 보드 자동 생성 + 이벤트
+                  await supabase.from("boards").insert({ kind: "project", project_id: proj.id, title: pname.trim() });
+                  supabase
+                    .from("events")
+                    .insert({ actor_id: meId, project_id: proj.id, type: "project.created", payload: { name: pname.trim(), code } })
+                    .then(() => {});
+                  router.refresh();
+                }}
+                className="rounded-lg border border-navy/20 px-3 py-1.5 text-sm font-medium text-navy/70 hover:text-navy"
+              >
+                + 프로젝트
+              </button>
+            </>
+          )}
+          <div className="flex rounded-lg border border-navy/10 bg-card p-0.5">
           {(
             [
               ["day", "일"],
@@ -419,6 +467,7 @@ export function Timeline({
               {label}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
@@ -570,6 +619,7 @@ export function Timeline({
                   bodyW={bodyW}
                   base={base}
                   onToggle={toggleCollapse}
+                  onTaskClick={(t) => setPanel({ type: "edit", task: t })}
                 />
               ))}
             </div>
@@ -595,10 +645,22 @@ export function Timeline({
             ⚠ 마감 임박 (D-3 이내)
           </span>
           <span className="ml-auto text-navy/30">
-            바 색 = 작업자 · 클릭 = 상세 (5단계)
+            바 색 = 작업자 · 바 클릭 = 상세 패널
           </span>
         </div>
       </div>
+
+      {/* ===== 태스크 상세 패널 ===== */}
+      {panel && (
+        <TaskPanel
+          mode={panel}
+          projects={data.projects}
+          team={data.profiles}
+          meId={meId}
+          isDirector={isDirector}
+          onClose={() => setPanel(null)}
+        />
+      )}
     </div>
   );
 }
@@ -666,6 +728,7 @@ function TimelineRow({
   bodyW,
   base,
   onToggle,
+  onTaskClick,
 }: {
   row: Row;
   x: (d: Date) => number;
@@ -673,6 +736,7 @@ function TimelineRow({
   bodyW: number;
   base: Date;
   onToggle: (id: string) => void;
+  onTaskClick: (t: TLTask) => void;
 }) {
   const h = ROW_H[row.kind];
 
@@ -796,7 +860,7 @@ function TimelineRow({
           </>
         )}
         {row.kind === "task" && (
-          <TaskBar task={row.task} color={row.color} x={x} dayW={dayW} base={base} />
+          <TaskBar task={row.task} color={row.color} x={x} dayW={dayW} base={base} onClick={() => onTaskClick(row.task)} />
         )}
       </div>
     </div>
@@ -810,12 +874,14 @@ function TaskBar({
   x,
   dayW,
   base,
+  onClick,
 }: {
   task: TLTask;
   color: string;
   x: (d: Date) => number;
   dayW: number;
   base: Date;
+  onClick: () => void;
 }) {
   const s = parseDate(task.start_date);
   const e = parseDate(task.end_date);
@@ -847,6 +913,7 @@ function TaskBar({
     <div
       className={cls + " cursor-pointer"}
       style={style}
+      onClick={onClick}
       title={`${task.name} · ${fmtMD(s)}–${fmtMD(e)} (${
         task.status === "done" ? "완료" : task.status === "active" ? "진행 중" : "대기"
       })`}
