@@ -63,6 +63,7 @@ profiles / clients / projects(code unique, prod_anchor_date) / milestones / task
 - `/me`: 내 태스크 + 디렉팅 피드백 피드(feed_cursors 안읽음) + 개인 메모. director는 "오늘의 관제" 추가.
 - `/clients/[id]`: 업체 아카이브 — 프로젝트 목록 + confirmed 방향로그 모아보기.
 - `/worklog`: 개인 업무일지 — 날짜·프로젝트·내용·실제 업무시간(h)·비고, 월 필터+시간 합계. director는 인원 필터로 전원 열람 + HTML 다운로드/PDF 저장(인쇄). 관리자 세팅은 타임라인 프로젝트 행 👥(director).
+- `/ai`: AI 일정 반영 (director, 사용자 확장 2026-07-08) — 자료 붙여넣기 → `/api/ai/parse`(Claude claude-opus-4-8, 구조화 출력, ANTHROPIC_API_KEY 필요)가 변경안 생성 → 당사자에게 확인 팝업(app-shell 전역, 맞음/이견+사유) → 응답 취합 → 대표 최종 컨펌 시 tasks CRUD 반영(이견 항목 기본 제외). 테이블 ai_change_sets/items(0011) — 당사자는 자기 항목만 + ack 컬럼만 수정(trigger).
 
 ## 7. 이벤트 로그
 모든 쓰기 경로에서 events insert(payload에 before/after). 공통 헬퍼 `logEvent()` 강제.

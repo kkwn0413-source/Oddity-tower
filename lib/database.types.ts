@@ -29,6 +29,130 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_change_items: {
+        Row: {
+          ack_at: string | null
+          ack_comment: string | null
+          ack_status: string
+          action: string
+          applied: boolean
+          assignee_id: string | null
+          before: Json | null
+          created_at: string
+          id: string
+          payload: Json
+          project_id: string | null
+          seq: number
+          set_id: string
+          summary: string
+          task_id: string | null
+        }
+        Insert: {
+          ack_at?: string | null
+          ack_comment?: string | null
+          ack_status?: string
+          action: string
+          applied?: boolean
+          assignee_id?: string | null
+          before?: Json | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          project_id?: string | null
+          seq?: number
+          set_id: string
+          summary: string
+          task_id?: string | null
+        }
+        Update: {
+          ack_at?: string | null
+          ack_comment?: string | null
+          ack_status?: string
+          action?: string
+          applied?: boolean
+          assignee_id?: string | null
+          before?: Json | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          project_id?: string | null
+          seq?: number
+          set_id?: string
+          summary?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_change_items_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_change_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_change_items_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "ai_change_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_change_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_change_sets: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          source_text: string
+          status: string
+          summary: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          source_text: string
+          status?: string
+          summary?: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          source_text?: string
+          status?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_change_sets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_assets: {
         Row: {
           board_id: string

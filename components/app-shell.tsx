@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MainNav } from "@/components/main-nav";
+import { AckPopup } from "@/components/ai/ack-popup";
 import type { Profile } from "@/lib/auth";
 
 /** 앱 셸 — 상단 네이비 헤더 + 콘텐츠 영역. profile=null이면 비로그인(로그인/공유 페이지). */
@@ -58,6 +59,9 @@ export function AppShell({
       </header>
 
       <main className="flex-1">{children}</main>
+
+      {/* AI 변경안 당사자 확인 팝업 — 로그인한 모든 페이지에서 감지 */}
+      {profile && <AckPopup meId={profile.id} />}
     </div>
   );
 }
