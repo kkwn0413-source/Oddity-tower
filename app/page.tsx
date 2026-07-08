@@ -23,7 +23,8 @@ export default async function HomePage() {
       .select(
         "id, project_id, name, description, assignee_id, start_date, end_date, status, sort_order",
       ),
-    supabase.from("profiles").select("id, name, role, color"),
+    // 직접 SELECT는 RLS로 freelancer에게 본인 row만 내려와 이름이 "?"로 표시됨
+    supabase.rpc("team_directory"),
   ]);
 
   const data: TimelineData = {
@@ -31,7 +32,12 @@ export default async function HomePage() {
     projects: projects.data ?? [],
     milestones: milestones.data ?? [],
     tasks: tasks.data ?? [],
-    profiles: profiles.data ?? [],
+    profiles: (profiles.data ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      role: p.role,
+      color: p.color,
+    })),
   };
 
   return (

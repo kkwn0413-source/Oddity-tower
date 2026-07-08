@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { fmtMD, parseDate } from "@/lib/dates";
+import { TaskFiles } from "./task-files";
 import type { TLProfile, TLProject, TLTask } from "./types";
 
 /**
@@ -460,13 +461,20 @@ export function TaskPanel({
             </div>
           )}
 
-          {/* 파일 (6단계) */}
+          {/* 파일 */}
           {editing && (
             <section>
               <div className={label}>파일</div>
-              <p className="mt-1.5 rounded-md border border-dashed border-navy/15 px-3 py-3 text-xs text-navy/35">
-                파일 업로드·Drive/Figma 링크는 6단계에서 여기에 붙습니다.
-              </p>
+              <TaskFiles
+                taskId={editing.id}
+                projectId={editing.project_id}
+                projectCode={project?.code ?? "TASK"}
+                taskName={editing.name}
+                meId={meId}
+                meName={nameOf(meId)}
+                isDirector={isDirector}
+                nameOf={nameOf}
+              />
             </section>
           )}
 
