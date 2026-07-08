@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { TaskPanel, type PanelMode } from "./task-panel";
+import { ManagerModal } from "./manager-modal";
 import {
   addDays,
   ddayLabel,
@@ -62,7 +63,15 @@ export function Timeline({
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [panel, setPanel] = useState<PanelMode | null>(null);
+  const [manageProjectId, setManageProjectId] = useState<string | null>(null);
   const router = useRouter();
+
+  // 내가 관리자인 프로젝트 — 해당 프로젝트의 태스크 생성·수정·삭제 가능
+  const managedProjectIds = useMemo(
+    () => data.managers.filter((m) => m.profile_id === meId).map((m) => m.project_id),
+    [data.managers, meId],
+  );
+  const canCreate = isDirector || managedProjectIds.length > 0;
 
   const base = today();
   const dayW = ZOOMS[zoom];
@@ -406,14 +415,16 @@ export function Timeline({
         </div>
 
         <div className="flex items-center gap-2">
+          {canCreate && (
+            <button
+              onClick={() => setPanel({ type: "create" })}
+              className="rounded-lg bg-navy px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            >
+              + 태스크
+            </button>
+          )}
           {isDirector && (
             <>
-              <button
-                onClick={() => setPanel({ type: "create" })}
-                className="rounded-lg bg-navy px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-              >
-                + 태스크
-              </button>
               <button
                 onClick={async () => {
                   const supabase = createClient();
@@ -620,6 +631,7 @@ export function Timeline({
                   base={base}
                   onToggle={toggleCollapse}
                   onTaskClick={(t) => setPanel({ type: "edit", task: t })}
+                  onManage={isDirector ? (pid) => setManageProjectId(pid) : undefined}
                 />
               ))}
             </div>
@@ -658,7 +670,19 @@ export function Timeline({
           team={data.profiles}
           meId={meId}
           isDirector={isDirector}
+          managedProjectIds={managedProjectIds}
           onClose={() => setPanel(null)}
+        />
+      )}
+
+      {/* ===== 프로젝트 관리자 세팅 (director) ===== */}
+      {manageProjectId && (
+        <ManagerModal
+          project={projectById.get(manageProjectId)!}
+          team={data.profiles}
+          managers={data.managers}
+          meId={meId}
+          onClose={() => setManageProjectId(null)}
         />
       )}
     </div>
@@ -729,6 +753,7 @@ function TimelineRow({
   base,
   onToggle,
   onTaskClick,
+  onManage,
 }: {
   row: Row;
   x: (d: Date) => number;
@@ -737,6 +762,7 @@ function TimelineRow({
   base: Date;
   onToggle: (id: string) => void;
   onTaskClick: (t: TLTask) => void;
+  onManage?: (projectId: string) => void;
 }) {
   const h = ROW_H[row.kind];
 
@@ -771,9 +797,21 @@ function TimelineRow({
         <span className="truncate text-[13px] font-semibold text-navy">
           {row.label}
         </span>
+        {onManage && (
+          <button
+            onClick={() => onManage(row.id)}
+            className="ml-auto shrink-0 rounded p-0.5 text-[13px] leading-none opacity-40 transition-opacity hover:opacity-100"
+            title="프로젝트 관리자 세팅"
+          >
+            👥
+          </button>
+        )}
         <Link
           href={`/projects/${row.id}/board`}
-          className="ml-auto shrink-0 rounded p-0.5 text-[13px] leading-none opacity-40 transition-opacity hover:opacity-100"
+          className={
+            (onManage ? "" : "ml-auto ") +
+            "shrink-0 rounded p-0.5 text-[13px] leading-none opacity-40 transition-opacity hover:opacity-100"
+          }
           title="레퍼런스 보드"
         >
           🖼

@@ -45,6 +45,7 @@ export function TaskPanel({
   team,
   meId,
   isDirector,
+  managedProjectIds,
   onClose,
 }: {
   mode: PanelMode;
@@ -52,17 +53,28 @@ export function TaskPanel({
   team: TLProfile[];
   meId: string;
   isDirector: boolean;
+  managedProjectIds: string[];
   onClose: () => void;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const editing = mode.type === "edit" ? mode.task : null;
 
+  // 관리자는 담당 프로젝트 범위에서 director와 동일한 태스크 편집 권한
+  // (단가·internal 코멘트·파일 승인은 여전히 director 전용)
+  const selectableProjects = isDirector
+    ? projects
+    : projects.filter((p) => managedProjectIds.includes(p.id));
+  const canEdit = editing
+    ? isDirector || managedProjectIds.includes(editing.project_id)
+    : selectableProjects.length > 0;
+
   // ----- 폼 상태 -----
   const [name, setName] = useState(editing?.name ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [projectId, setProjectId] = useState(
-    editing?.project_id ?? (mode.type === "create" ? (mode.projectId ?? projects[0]?.id ?? "") : ""),
+    editing?.project_id ??
+      (mode.type === "create" ? (mode.projectId ?? selectableProjects[0]?.id ?? "") : ""),
   );
   const [assigneeId, setAssigneeId] = useState<string | null>(
     editing?.assignee_id ?? meId,
@@ -173,7 +185,7 @@ export function TaskPanel({
   }
 
   async function saveDirectorEdit() {
-    if (!isDirector) return;
+    if (!canEdit) return;
     if (!name.trim() || !startDate || !endDate || !projectId) {
       alert("이름·프로젝트·기간은 필수입니다.");
       return;
@@ -238,7 +250,7 @@ export function TaskPanel({
   }
 
   async function removeTask() {
-    if (!editing || !isDirector) return;
+    if (!editing || !canEdit) return;
     if (!window.confirm(`"${editing.name}" 태스크를 삭제할까요? (파일·코멘트 포함)`)) return;
     const { error } = await supabase.from("tasks").delete().eq("id", editing.id);
     if (error) {
@@ -323,7 +335,7 @@ export function TaskPanel({
           </section>
 
           {/* 기본 정보 */}
-          {isDirector ? (
+          {canEdit ? (
             <section className="flex flex-col gap-3">
               <div>
                 <div className={label}>태스크 이름</div>
@@ -333,7 +345,7 @@ export function TaskPanel({
                 <div>
                   <div className={label}>프로젝트</div>
                   <select className={input + " mt-1"} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-                    {projects.map((p) => (
+                    {selectableProjects.map((p) => (
                       <option key={p.id} value={p.id}>
                         [{p.code}] {p.name}
                       </option>
@@ -440,8 +452,8 @@ export function TaskPanel({
             </section>
           )}
 
-          {/* director 저장/삭제 */}
-          {isDirector && (
+          {/* 저장/삭제 — director + 담당 프로젝트 관리자 */}
+          {canEdit && (
             <div className="flex gap-2">
               <button
                 onClick={saveDirectorEdit}

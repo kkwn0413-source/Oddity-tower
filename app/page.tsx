@@ -11,7 +11,7 @@ export default async function HomePage() {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const [clients, projects, milestones, tasks, profiles] = await Promise.all([
+  const [clients, projects, milestones, tasks, profiles, managers] = await Promise.all([
     supabase.from("clients").select("id, name").order("name"),
     supabase
       .from("projects")
@@ -25,6 +25,9 @@ export default async function HomePage() {
       ),
     // 직접 SELECT는 RLS로 freelancer에게 본인 row만 내려와 이름이 "?"로 표시됨
     supabase.rpc("team_directory"),
+    supabase
+      .from("project_managers")
+      .select("project_id, profile_id, assigned_by, created_at"),
   ]);
 
   const data: TimelineData = {
@@ -38,6 +41,7 @@ export default async function HomePage() {
       role: p.role,
       color: p.color,
     })),
+    managers: managers.data ?? [],
   };
 
   return (

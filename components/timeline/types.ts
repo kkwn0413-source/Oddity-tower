@@ -37,10 +37,18 @@ export type TLProfile = {
   color: string;
 };
 
+export type TLManager = {
+  project_id: string;
+  profile_id: string;
+  assigned_by: string;
+  created_at: string;
+};
+
 export type TimelineData = {
   clients: TLClient[];
   projects: TLProject[];
   milestones: TLMilestone[];
   tasks: TLTask[];
   profiles: TLProfile[];
+  managers: TLManager[];
 };

@@ -665,6 +665,49 @@ export type Database = {
         }
         Relationships: []
       }
+      project_managers: {
+        Row: {
+          assigned_by: string
+          created_at: string
+          profile_id: string
+          project_id: string
+        }
+        Insert: {
+          assigned_by: string
+          created_at?: string
+          profile_id: string
+          project_id: string
+        }
+        Update: {
+          assigned_by?: string
+          created_at?: string
+          profile_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_managers_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_managers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_managers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           client_id: string
@@ -1008,6 +1051,57 @@ export type Database = {
           },
         ]
       }
+      work_logs: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          hours: number | null
+          id: string
+          note: string | null
+          project_id: string | null
+          updated_at: string
+          work_date: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          hours?: number | null
+          id?: string
+          note?: string | null
+          project_id?: string | null
+          updated_at?: string
+          work_date: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          hours?: number | null
+          id?: string
+          note?: string | null
+          project_id?: string | null
+          updated_at?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_logs_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1025,6 +1119,8 @@ export type Database = {
         Returns: boolean
       }
       is_director: { Args: never; Returns: boolean }
+      is_manager_of_client: { Args: { p_client_id: string }; Returns: boolean }
+      is_project_manager: { Args: { p_project_id: string }; Returns: boolean }
       is_system_context: { Args: never; Returns: boolean }
       save_meeting: {
         Args: {

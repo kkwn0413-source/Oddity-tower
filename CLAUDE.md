@@ -33,7 +33,7 @@
 - 상태: 완료=채움+45%투명 / 진행중=채움 / 대기=점선 외곽선. 마일스톤=골드 다이아몬드(45°). 마감 임박=⚠ 빨강.
 
 ## 4. 데이터 모델 (Supabase 마이그레이션)
-profiles / clients / projects(code unique, prod_anchor_date) / milestones / tasks(status wait|active|done) / task_finance(대표전용) / task_files(자동네이밍·version·approved) / comments(internal) / events(모든 mutation 기록) / share_links(token·include_board·revoked) / ref_zones / ref_images(starred·hidden·verdict good|bad·verdict_memo·doc_group) / direction_logs(open|confirmed|superseded, supersedes) / proc_items(대표전용, 발주 마지노선 = prod_anchor_date − lead_weeks×7 − buffer_days) / personal_notes(본인전용) / feed_cursors.
+profiles / clients / projects(code unique, prod_anchor_date) / milestones / tasks(status wait|active|done) / task_finance(대표전용) / task_files(자동네이밍·version·approved) / comments(internal) / events(모든 mutation 기록) / share_links(token·include_board·revoked) / ref_zones / ref_images(starred·hidden·verdict good|bad·verdict_memo·doc_group) / direction_logs(open|confirmed|superseded, supersedes) / proc_items(대표전용, 발주 마지노선 = prod_anchor_date − lead_weeks×7 − buffer_days) / personal_notes(본인전용) / feed_cursors / project_managers(프로젝트별 ≤6, assigned_by 기록) / work_logs(개인 업무일지 — hours=실제 업무시간, 정산 기준).
 > 상세 컬럼 정의는 초기 프롬프트 원문(4장) 참조. 마이그레이션 SQL이 진실의 원천.
 
 ## 5. RLS 정책 (핵심)
@@ -48,6 +48,8 @@ profiles / clients / projects(code unique, prod_anchor_date) / milestones / task
 - personal_notes: 본인만(타인 정책 없음, director 포함).
 - feed_cursors: 본인만.
 - proc_items: director만. freelancer 정책 없음.
+- project_managers: 지정/해제 director만(최대 6명 trigger), 목록은 전원 SELECT. 관리자는 담당 프로젝트의 tasks·milestones 생성/수정/삭제 + can_access_task(파일·코멘트) 포함. 단가·선발주·프로젝트 자체 수정은 여전히 대표 전용. (사용자 확장 2026-07-08)
+- work_logs: 본인 전체 CRUD + director SELECT만(서로의 일지 열람 불가). events payload에는 날짜만(내용·시간 비노출). (사용자 확장 2026-07-08)
 - 공유 링크 열람: RLS 우회 아니라 `/api/share/[token]` service role + 반환 필드 화이트리스트(프로젝트명/마일스톤/태스크 name·기간·status·담당자이름 / approved=true 파일 / internal=false 코멘트). task_finance·proc_items·verdict_memo 쿼리 원천 배제.
 
 ## 6. 화면 (요약)
@@ -60,6 +62,7 @@ profiles / clients / projects(code unique, prod_anchor_date) / milestones / task
 - `/projects/[id]/procure`: 대표전용. 마지노선 역산 D-day, 미발주+경과=빨강/7일이내=주황.
 - `/me`: 내 태스크 + 디렉팅 피드백 피드(feed_cursors 안읽음) + 개인 메모. director는 "오늘의 관제" 추가.
 - `/clients/[id]`: 업체 아카이브 — 프로젝트 목록 + confirmed 방향로그 모아보기.
+- `/worklog`: 개인 업무일지 — 날짜·프로젝트·내용·실제 업무시간(h)·비고, 월 필터+시간 합계. director는 인원 필터로 전원 열람 + HTML 다운로드/PDF 저장(인쇄). 관리자 세팅은 타임라인 프로젝트 행 👥(director).
 
 ## 7. 이벤트 로그
 모든 쓰기 경로에서 events insert(payload에 before/after). 공통 헬퍼 `logEvent()` 강제.

@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: "/", label: "타임라인", directorOnly: false },
   { href: "/boards", label: "보드", directorOnly: false },
   { href: "/me", label: "내 작업", directorOnly: false },
+  { href: "/worklog", label: "업무일지", directorOnly: false },
   { href: "/admin/share", label: "공유 링크", directorOnly: true },
 ] as const;
 
