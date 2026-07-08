@@ -105,6 +105,7 @@ function pic(seed: string, w: number, h: number) {
   return `https://picsum.photos/seed/${seed}/${w}/${h}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function insert<T extends object>(table: string, rows: T[]): Promise<any[]> {
   // PostgREST 다중 insert는 row마다 키가 다르면 누락 키를 null로 채운다.
   // 모든 row의 키 합집합으로 정규화하되, 누락분은 undefined 대신 제외되도록

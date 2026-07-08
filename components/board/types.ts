@@ -74,6 +74,13 @@ export type BoardAsset = {
 
 export type TeamMember = { id: string; name: string; color: string; role: string };
 
+/** 프로젝트 보드 헤더의 스케줄 연계 칩 */
+export type ScheduleInfo = {
+  nextMilestone: { label: string; due: string } | null;
+  imminentCount: number; // D-3 이내 미완료
+  activeCount: number;
+};
+
 export type BoardData = {
   board: BoardInfo;
   zones: BoardZone[];

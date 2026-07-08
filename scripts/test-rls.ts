@@ -11,9 +11,7 @@ const URL = requireEnv(env, "NEXT_PUBLIC_SUPABASE_URL");
 const ANON = requireEnv(env, "NEXT_PUBLIC_SUPABASE_ANON_KEY");
 const SERVICE = requireEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
 
-const admin = createClient(URL, SERVICE, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+void SERVICE; // (매직링크 시절 admin 클라이언트 용도 — 비밀번호 전환으로 불필요)
 
 let pass = 0;
 let fail = 0;

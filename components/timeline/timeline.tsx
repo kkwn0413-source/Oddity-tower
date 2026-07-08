@@ -46,11 +46,9 @@ type Row =
 
 export function Timeline({
   data,
-  meId,
   isDirector,
 }: {
   data: TimelineData;
-  meId: string;
   isDirector: boolean;
 }) {
   const [zoom, setZoom] = useState<Zoom>("day");

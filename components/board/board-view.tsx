@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { BoardData, BoardImage, BoardZone } from "./types";
+import { MeetingsPanel } from "./meetings-panel";
+import { DirectionPanel } from "./direction-panel";
+import type { BoardData, BoardImage, BoardZone, ScheduleInfo } from "./types";
 
 /**
  * 레퍼런스 보드 — v17 다크 UX 계승.
@@ -13,19 +16,6 @@ import type { BoardData, BoardImage, BoardZone } from "./types";
  */
 
 type ViewMode = "all" | "stars" | "verdict";
-
-const KIND_LABEL: Record<string, { label: string; cls: string }> = {
-  keep: { label: "유지", cls: "border-board-line text-board-mut" },
-  add: { label: "추가", cls: "border-gold-bright/50 text-gold-bright" },
-  remove: { label: "제거", cls: "border-verdict-bad/50 text-verdict-bad" },
-  note: { label: "메모", cls: "border-board-line text-board-mut" },
-};
-
-const DL_STATUS: Record<string, { label: string; cls: string }> = {
-  open: { label: "미확정", cls: "border-gold-bright/50 text-gold-bright" },
-  confirmed: { label: "확정", cls: "border-verdict-good/50 text-verdict-good" },
-  superseded: { label: "대체됨", cls: "border-board-line text-board-mut line-through" },
-};
 
 function fmtDate(iso: string) {
   const [y, m, d] = iso.slice(0, 10).split("-");
@@ -38,15 +28,18 @@ export function BoardView({
   isDirector,
   canEdit,
   canDelete,
+  schedule,
 }: {
   data: BoardData;
   meId: string;
   isDirector: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  schedule?: ScheduleInfo | null;
 }) {
   const { board, meetings, directionLogs, team } = data;
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
 
   // 로컬 상태 (낙관적 갱신)
   const [zones, setZones] = useState<BoardZone[]>(data.zones);
@@ -67,13 +60,54 @@ export function BoardView({
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadZone = useRef<string | null>(null);
 
+  // 서버 refetch(router.refresh) 후 props 변화를 로컬 상태에 반영 — last-write-wins
+  // (render 중 상태 조정 패턴 — effect 사용 시 cascading render)
+  const [prevData, setPrevData] = useState(data);
+  if (prevData !== data) {
+    setPrevData(data);
+    setZones(data.zones);
+    setImages(data.images);
+    setAssets(data.assets);
+    setIsShared(board.shared);
+    setAccess(board.access);
+    setMemberIds(new Set(board.memberIds));
+  }
+
+  // Realtime — 이미지/존/링크/보드 설정 변경 시 서버 refetch (디바운스)
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => router.refresh(), 400);
+    };
+    const ch = supabase
+      .channel(`board-${board.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ref_images" }, refresh)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ref_zones", filter: `board_id=eq.${board.id}` },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "board_assets", filter: `board_id=eq.${board.id}` },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "boards", filter: `id=eq.${board.id}` },
+        refresh,
+      )
+      .subscribe();
+    return () => {
+      if (t) clearTimeout(t);
+      void supabase.removeChannel(ch);
+    };
+  }, [supabase, board.id, router]);
+
   const nameOf = useMemo(() => {
     const m = new Map(team.map((t) => [t.id, t.name]));
     return (id: string | null) => (id ? (m.get(id) ?? "?") : "?");
-  }, [team]);
-  const colorOf = useMemo(() => {
-    const m = new Map(team.map((t) => [t.id, t.color]));
-    return (id: string | null) => (id ? (m.get(id) ?? "#8b8894") : "#8b8894");
   }, [team]);
 
   // ---------------------------------------------------------------------------
@@ -581,6 +615,28 @@ export function BoardView({
             </Link>
           </div>
         </div>
+        {/* 스케줄 연계 칩 (프로젝트 보드) */}
+        {schedule && (
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-5 pt-2 text-[11.5px]">
+            {schedule.nextMilestone && (
+              <span className="flex items-center gap-1.5 rounded-full border border-gold-bright/40 px-2.5 py-1 text-gold-bright">
+                <span className="inline-block h-1.5 w-1.5 rotate-45 bg-gold-bright" />
+                {schedule.nextMilestone.label} · {schedule.nextMilestone.due}
+              </span>
+            )}
+            {schedule.imminentCount > 0 && (
+              <span className="rounded-full border border-verdict-bad/50 px-2.5 py-1 font-semibold text-verdict-bad">
+                ⚠ 마감 임박 {schedule.imminentCount}
+              </span>
+            )}
+            <span className="rounded-full border border-board-line px-2.5 py-1 text-board-mut">
+              진행 중 태스크 {schedule.activeCount}
+            </span>
+            <Link href="/" className="text-board-mut underline-offset-2 hover:text-gold-bright hover:underline">
+              타임라인에서 보기 →
+            </Link>
+          </div>
+        )}
         {/* 접근 관리 패널 (director) */}
         {isDirector && accessOpen && (
           <div className="mx-auto max-w-[1600px] px-5 pb-1 pt-2.5">
@@ -731,83 +787,27 @@ export function BoardView({
           )}
 
           {infoOpen && infoTab === "meetings" && (
-            <div className="py-2">
-              {meetings.length === 0 && (
-                <p className="py-3 text-sm text-board-mut">아직 회의록이 없습니다.</p>
-              )}
-              {meetings.map((m) => (
-                <details key={m.id} className="border-t border-board-line" open={m.round === meetings[0]?.round}>
-                  <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-2.5 py-3 text-[13.5px] [&::-webkit-details-marker]:hidden">
-                    <span className="font-mono text-[11px] text-gold-bright">{m.round}차</span>
-                    <b>{m.title ?? "회의"}</b>
-                    <span className="font-mono text-[11px] text-board-mut">{fmtDate(m.met_at)}</span>
-                    <span className="text-[11px] text-board-mut">{nameOf(m.author_id)}</span>
-                    {m.revisionCount > 0 && (
-                      <span className="font-mono text-[9.5px] text-board-mut">수정 {m.revisionCount}회</span>
-                    )}
-                    {m.comments.length > 0 && (
-                      <span className="rounded-full border border-board-line px-2 py-0.5 text-[10px] text-board-mut">
-                        첨삭 {m.comments.length}
-                      </span>
-                    )}
-                  </summary>
-                  <div className="pb-4 pl-4">
-                    {m.body && (
-                      <p className="mb-2.5 text-[12.8px] leading-relaxed text-[#cfccc4]">{m.body}</p>
-                    )}
-                    <ul className="space-y-1.5">
-                      {m.items.map((it) => {
-                        const k = KIND_LABEL[it.kind] ?? KIND_LABEL.note;
-                        return (
-                          <li key={it.id} className="flex items-start gap-2 text-[12.8px] leading-relaxed">
-                            <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-px text-[10px] ${k.cls}`}>
-                              {k.label}
-                            </span>
-                            <span className={it.kind === "remove" ? "text-[#e0b7b7]" : "text-[#cfccc4]"}>
-                              {it.body}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    {m.comments.length > 0 && (
-                      <div className="mt-3 border-l-2 border-board-line pl-3">
-                        {m.comments.map((c) => (
-                          <div key={c.id} className="py-1 text-[12px]">
-                            <span className="font-semibold" style={{ color: colorOf(c.author_id) }}>
-                              {nameOf(c.author_id)}
-                            </span>{" "}
-                            <span className="text-[#b9b5ac]">{c.body}</span>
-                            <span className="ml-2 font-mono text-[9.5px] text-board-mut">{fmtDate(c.created_at)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </details>
-              ))}
-            </div>
+            <MeetingsPanel
+              boardId={board.id}
+              projectId={board.project_id}
+              initial={meetings}
+              meId={meId}
+              isDirector={isDirector}
+              canEdit={canEdit}
+              team={team}
+            />
           )}
 
-          {infoOpen && infoTab === "logs" && board.kind === "project" && (
-            <div className="py-2">
-              {directionLogs.map((l) => {
-                const s = DL_STATUS[l.status] ?? DL_STATUS.open;
-                return (
-                  <div key={l.id} className="flex items-start gap-2.5 border-t border-board-line py-2.5 text-[12.8px]">
-                    <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-px text-[10px] ${s.cls}`}>
-                      {s.label}
-                    </span>
-                    <span className={l.status === "superseded" ? "text-board-mut line-through" : "text-[#cfccc4]"}>
-                      {l.body}
-                    </span>
-                    <span className="ml-auto shrink-0 font-mono text-[10px] text-board-mut">
-                      {nameOf(l.author_id)} · {fmtDate(l.created_at)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+          {infoOpen && infoTab === "logs" && board.kind === "project" && board.project_id && (
+            <DirectionPanel
+              projectId={board.project_id}
+              boardId={board.id}
+              initial={directionLogs}
+              meId={meId}
+              isDirector={isDirector}
+              canEdit={canEdit}
+              team={team}
+            />
           )}
 
           {infoOpen && infoTab === "assets" && (
@@ -1205,17 +1205,33 @@ function VerdictView({
   const bad = images.filter((i) => !i.hidden && i.verdict === "bad");
   const none = images.filter((i) => !i.hidden && !i.verdict);
 
-  const Group = ({
-    title,
-    tone,
-    list,
-    withMemo,
-  }: {
-    title: string;
-    tone: string;
-    list: BoardImage[];
-    withMemo: boolean;
-  }) => (
+  return (
+    <>
+      <VerdictGroup title="● 좋음 — 이 프로젝트에서 통하는 것" tone="var(--color-verdict-good)" list={good} withMemo zoneTitle={zoneTitle} nameOf={nameOf} onOpen={onOpen} />
+      <VerdictGroup title="● 나쁨 — 피할 것" tone="var(--color-verdict-bad)" list={bad} withMemo zoneTitle={zoneTitle} nameOf={nameOf} onOpen={onOpen} />
+      <VerdictGroup title="미판정" tone="var(--color-board-mut)" list={none} withMemo={false} zoneTitle={zoneTitle} nameOf={nameOf} onOpen={onOpen} />
+    </>
+  );
+}
+
+function VerdictGroup({
+  title,
+  tone,
+  list,
+  withMemo,
+  zoneTitle,
+  nameOf,
+  onOpen,
+}: {
+  title: string;
+  tone: string;
+  list: BoardImage[];
+  withMemo: boolean;
+  zoneTitle: (id: string) => string;
+  nameOf: (id: string | null) => string;
+  onOpen: (i: BoardImage) => void;
+}) {
+  return (
     <section className="pt-9">
       <header className="mb-4 flex items-baseline gap-3 border-b border-board-line pb-3">
         <h2 className="text-lg font-extrabold" style={{ color: tone }}>
@@ -1264,13 +1280,5 @@ function VerdictView({
         </div>
       )}
     </section>
-  );
-
-  return (
-    <>
-      <Group title="● 좋음 — 이 프로젝트에서 통하는 것" tone="var(--color-verdict-good)" list={good} withMemo />
-      <Group title="● 나쁨 — 피할 것" tone="var(--color-verdict-bad)" list={bad} withMemo />
-      <Group title="미판정" tone="var(--color-board-mut)" list={none} withMemo={false} />
-    </>
   );
 }

@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { BoardView } from "@/components/board/board-view";
-import type { BoardData, BoardImage } from "@/components/board/types";
+import { fmtMD, isImminent, parseDate, today, toISO } from "@/lib/dates";
+import type { BoardData, BoardImage, ScheduleInfo } from "@/components/board/types";
 
 export default async function BoardPage({
   params,
@@ -163,6 +164,32 @@ export default async function BoardPage({
     board.kind === "shared" ||
     (board.kind === "personal" && board.owner_id === profile.id);
 
+  // 스케줄 연계 (프로젝트 보드): 다음 마일스톤 + 마감 임박 + 진행 중
+  let schedule: ScheduleInfo | null = null;
+  if (board.project_id) {
+    const base = today();
+    const [{ data: ms }, { data: tasks }] = await Promise.all([
+      supabase
+        .from("milestones")
+        .select("label, due_date")
+        .eq("project_id", board.project_id)
+        .gte("due_date", toISO(base))
+        .order("due_date")
+        .limit(1),
+      supabase
+        .from("tasks")
+        .select("end_date, status")
+        .eq("project_id", board.project_id),
+    ]);
+    schedule = {
+      nextMilestone: ms?.[0]
+        ? { label: ms[0].label, due: fmtMD(parseDate(ms[0].due_date)) }
+        : null,
+      imminentCount: (tasks ?? []).filter((t) => isImminent(t.end_date, t.status, base)).length,
+      activeCount: (tasks ?? []).filter((t) => t.status === "active").length,
+    };
+  }
+
   return (
     <BoardView
       data={data}
@@ -170,6 +197,7 @@ export default async function BoardPage({
       isDirector={isDirector}
       canEdit={canEdit}
       canDelete={canDelete}
+      schedule={schedule}
     />
   );
 }
