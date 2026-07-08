@@ -31,7 +31,11 @@ export function AppShell({
           <div className="ml-auto flex items-center gap-3">
             {profile && (
               <>
-                <span className="flex items-center gap-1.5 text-sm">
+                <Link
+                  href="/account"
+                  className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-white/5"
+                  title="내 계정 — 비밀번호 변경"
+                >
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-full"
                     style={{ backgroundColor: profile.color }}
@@ -43,7 +47,7 @@ export function AppShell({
                       대표
                     </span>
                   )}
-                </span>
+                </Link>
                 <form action="/auth/signout" method="post">
                   <button
                     type="submit"
