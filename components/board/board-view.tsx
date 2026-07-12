@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { MeetingsPanel } from "./meetings-panel";
+// DEFERRED: BRIEF Phase 1 — 회의 모듈 숨김. 복원 시 import·구조분해·탭·패널 주석 해제
+// import { MeetingsPanel } from "./meetings-panel";
 import { DirectionPanel } from "./direction-panel";
 import type { BoardData, BoardImage, BoardZone, ScheduleInfo } from "./types";
 
@@ -17,10 +18,11 @@ import type { BoardData, BoardImage, BoardZone, ScheduleInfo } from "./types";
 
 type ViewMode = "all" | "stars" | "verdict";
 
-function fmtDate(iso: string) {
-  const [y, m, d] = iso.slice(0, 10).split("-");
-  return `${y.slice(2)}.${m}.${d}`;
-}
+// DEFERRED: BRIEF Phase 1 — 회의록 요약에서 쓰던 헬퍼. 복원 시 사용.
+// function fmtDate(iso: string) {
+//   const [y, m, d] = iso.slice(0, 10).split("-");
+//   return `${y.slice(2)}.${m}.${d}`;
+// }
 
 export function BoardView({
   data,
@@ -37,7 +39,8 @@ export function BoardView({
   canDelete: boolean;
   schedule?: ScheduleInfo | null;
 }) {
-  const { board, meetings, directionLogs, team } = data;
+  // DEFERRED: BRIEF Phase 1 — meetings는 숨김(복원 시 구조분해에 추가)
+  const { board, directionLogs, team } = data;
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
@@ -50,7 +53,10 @@ export function BoardView({
   const [editing, setEditing] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
-  const [infoTab, setInfoTab] = useState<"meetings" | "logs" | "assets">("meetings");
+  // BRIEF Phase 1: 회의록 탭 숨김 → 기본 탭은 방향 로그(프로젝트 보드) 또는 파일 링크
+  const [infoTab, setInfoTab] = useState<"meetings" | "logs" | "assets">(
+    data.board.kind === "project" ? "logs" : "assets",
+  );
   const [infoOpen, setInfoOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [accessOpen, setAccessOpen] = useState(false);
@@ -738,16 +744,18 @@ export function BoardView({
             <span className="rounded border border-gold-bright/40 px-1.5 py-0.5 font-mono text-[11px] text-gold-bright">
               LOG
             </span>
-            <h2 className="text-[15px] font-extrabold">차수별 회의록 · 로그</h2>
+            <h2 className="text-[15px] font-extrabold">디렉션 로그 · 파일</h2>
             <span className="ml-auto text-[11px] text-board-mut">
-              미팅마다 유지 / 추가 / 제거를 누적 — 수정하면 이전 버전이 이력으로 남습니다
+              프로젝트 방향과 참고 파일을 여기에 정리합니다
             </span>
           </div>
 
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            {/* DEFERRED: BRIEF Phase 1 — 회의록 탭 숨김 (기능·데이터 유지)
             <ITab on={infoOpen && infoTab === "meetings"} onClick={() => { setInfoTab("meetings"); setInfoOpen(true); }}>
               회의록 <span className="font-mono text-[10px] opacity-75">{meetings.length}</span>
             </ITab>
+            */}
             {board.kind === "project" && (
               <ITab on={infoOpen && infoTab === "logs"} onClick={() => { setInfoTab("logs"); setInfoOpen(true); }}>
                 방향 로그 <span className="font-mono text-[10px] opacity-75">{directionLogs.length}</span>
@@ -766,17 +774,17 @@ export function BoardView({
 
           {!infoOpen && (
             <p className="py-2.5 text-[12.5px] leading-relaxed text-board-mut">
-              {meetings.length > 0 ? (
-                <>
-                  최근{" "}
-                  <b className="text-board-ink">
-                    {meetings[0].round}차 · {meetings[0].title ?? "회의"} ({fmtDate(meetings[0].met_at)})
-                  </b>
-                  {" — "}
-                  {meetings[0].items.slice(0, 3).map((it) => it.body).join(" · ")}
-                </>
+              {board.kind === "project" ? (
+                directionLogs.length > 0 ? (
+                  <>
+                    방향 <b className="text-board-ink">{directionLogs.length}건</b>
+                    {" · "}파일 링크 {assets.length}개
+                  </>
+                ) : (
+                  "기록된 방향이 없습니다."
+                )
               ) : (
-                "아직 회의록이 없습니다."
+                <>파일 링크 {assets.length}개</>
               )}
               {board.kind === "project" && openCount > 0 && (
                 <span className="ml-2 rounded-full border border-gold-bright/50 px-2 py-0.5 text-[10.5px] text-gold-bright">
@@ -786,6 +794,7 @@ export function BoardView({
             </p>
           )}
 
+          {/* DEFERRED: BRIEF Phase 1 — 회의록 패널 숨김 (MeetingsPanel 유지)
           {infoOpen && infoTab === "meetings" && (
             <MeetingsPanel
               boardId={board.id}
@@ -796,7 +805,7 @@ export function BoardView({
               canEdit={canEdit}
               team={team}
             />
-          )}
+          )} */}
 
           {infoOpen && infoTab === "logs" && board.kind === "project" && board.project_id && (
             <DirectionPanel

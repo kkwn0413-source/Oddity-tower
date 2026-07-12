@@ -1,3 +1,4 @@
+// DEFERRED: BRIEF Phase 1 — /ai UI는 내비에서 숨김. API(/api/ai/parse)는 유지 (Phase 3 재사용).
 import { requireDirector } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AiReview } from "@/components/ai/ai-review";

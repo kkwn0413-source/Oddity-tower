@@ -1,3 +1,4 @@
+// DEFERRED: BRIEF Phase 1 — 내비게이션에서 숨김 (라우트·기능·테이블 유지, 직접 URL로만 접근)
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ReportFiles } from "@/components/files/report-files";

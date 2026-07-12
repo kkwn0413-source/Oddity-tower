@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// BRIEF Phase 1: 필수만 노출. 숨긴 항목(업무일지 /worklog, 보고 파일 /files,
+// AI 반영 /ai)은 라우트·기능 유지, 내비게이션 링크만 제거 — 직접 URL로만 접근.
 const NAV_ITEMS = [
   { href: "/", label: "타임라인", directorOnly: false },
   { href: "/boards", label: "보드", directorOnly: false },
   { href: "/me", label: "내 작업", directorOnly: false },
-  { href: "/worklog", label: "업무일지", directorOnly: false },
-  { href: "/files", label: "보고 파일", directorOnly: false },
-  { href: "/ai", label: "AI 반영", directorOnly: true },
   { href: "/admin/team", label: "팀 관리", directorOnly: true },
   { href: "/admin/share", label: "공유 링크", directorOnly: true },
 ] as const;
