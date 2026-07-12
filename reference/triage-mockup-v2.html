@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>도장 — 레퍼런스 정리 v2</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#FAF8F3;--ink:#1A1F2E;--ink-soft:#4A5063;--seal:#C43A2F;--seal-soft:#F6E5E2;--stone:#8B8F9C;--line:#E3E0D8;--ok:#2E6B4F;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;display:flex;justify-content:center;padding:26px 14px 70px;}
+  .wrap{width:100%;max-width:560px;}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .top .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;}
+  .top .logo .mark{width:26px;height:26px;border:2px solid var(--seal);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--seal);font-size:11px;font-weight:800;transform:rotate(-8deg);font-family:"Noto Serif KR",serif;}
+  .top .count{font-size:12.5px;color:var(--stone);font-variant-numeric:tabular-nums;}
+  .prog{height:4px;background:#EBE8E0;border-radius:99px;overflow:hidden;margin-bottom:14px;}
+  .prog i{display:block;height:100%;width:8%;background:var(--seal);border-radius:99px;transition:width .3s;}
+  h1{font-family:"Noto Serif KR",serif;font-size:18px;font-weight:800;margin-bottom:2px;}
+  .sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;}
+  .sub b{color:var(--seal);}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 14px 34px rgba(26,31,46,.10);}
+  .tools{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .tgroup{display:flex;background:#F1EEE6;border-radius:10px;padding:3px;}
+  .tbtn{border:none;background:transparent;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink-soft);padding:6px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:5px;}
+  .tbtn.on{background:var(--ink);color:#fff;}
+  .tbtn svg{width:13px;height:13px;}
+  .drawlock{margin-left:auto;}
+  .drawlock .tbtn.on{background:var(--seal);}
+  .tools .thint{font-size:11px;color:var(--stone);width:100%;}
+
+  .imgbox{position:relative;height:300px;user-select:none;}
+  @media(min-width:560px){.imgbox{height:340px;}}
+  .imgbox .ph{position:absolute;inset:0;}
+  .imgbox canvas{position:absolute;inset:0;width:100%;height:100%;}
+  .imgbox canvas.armed{cursor:crosshair;touch-action:none;}
+  .imgbox .fname{position:absolute;top:10px;left:12px;background:rgba(26,31,46,.75);color:#fff;font-size:11px;padding:3px 9px;border-radius:99px;pointer-events:none;}
+
+  .body{padding:14px 16px 16px;}
+  .ai{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;}
+  .ai .tag{background:var(--ink);color:#fff;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;}
+  .ai b{color:var(--ink);}
+  .row-label{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--stone);margin:10px 0 6px;}
+  .row-label small{font-weight:600;letter-spacing:0;color:#B0B4BE;margin-left:6px;}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:6px 13px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
+  .chip.on{border-color:var(--seal);background:var(--seal-soft);color:var(--seal);font-weight:800;}
+  .chip.add{border-style:dashed;color:var(--stone);}
+  .chip-input{border:1.5px solid var(--seal);border-radius:99px;padding:5px 12px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink);outline:none;width:110px;background:#fff;}
+
+  .memos{margin-top:4px;}
+  .memo-empty{font-size:12px;color:var(--stone);border:1.5px dashed var(--line);border-radius:12px;padding:12px;text-align:center;}
+  .mg{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;transition:border-color .15s, background .15s;}
+  .mg .head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px;}
+  .badge{width:22px;height:22px;border-radius:50%;background:var(--seal);color:#fff;font-size:11.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}
+  .mg .same{font-size:11px;color:var(--stone);}
+  .mg .linkbtn{border:1.5px solid var(--line);background:#fff;border-radius:99px;font-family:inherit;font-size:11px;font-weight:700;color:var(--ink-soft);padding:3px 10px;cursor:pointer;margin-left:auto;}
+  .mg .del{border:none;background:transparent;color:var(--stone);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;}
+  .mg input{width:100%;border:none;border-bottom:1.5px solid var(--line);font-family:inherit;font-size:13.5px;padding:5px 2px;background:transparent;outline:none;}
+  .mg input:focus{border-color:var(--seal);}
+  /* 묶기 모드 */
+  .merging .mg.source{border-color:var(--ink);background:#F7F6F2;}
+  .merging .mg.target{border-color:var(--seal);background:var(--seal-soft);cursor:pointer;animation:pulse 1.2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(196,58,47,.15);}50%{box-shadow:0 0 0 5px rgba(196,58,47,.12);}}
+  .merging .mg.target input{pointer-events:none;}
+  .mergebar{display:none;font-size:12px;color:var(--seal);font-weight:700;background:var(--seal-soft);border-radius:10px;padding:8px 12px;margin-bottom:8px;}
+  .merging .mergebar{display:block;}
+
+  .actions{display:grid;grid-template-columns:96px 1fr;gap:9px;margin-top:14px;}
+  .skip{border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:13px 0;font-family:inherit;font-size:13px;font-weight:700;color:var(--stone);cursor:pointer;}
+  .go{border:none;background:var(--ink);color:#fff;border-radius:13px;padding:13px 0;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;}
+  .tip{margin-top:11px;text-align:center;font-size:11.5px;color:var(--stone);}
+
+  .summary{display:none;}
+  .done .triage{display:none;}
+  .done .summary{display:block;}
+  .sumbox{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:12px;}
+  .sumbox h3{font-family:"Noto Serif KR",serif;font-size:16px;font-weight:800;margin-bottom:10px;}
+  .group-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .group-row:last-child{border-bottom:none;}
+  .group-row .n{font-weight:800;color:var(--seal);}
+  .sendbtn{width:100%;border:none;background:var(--seal);color:#fff;border-radius:13px;padding:15px 0;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;}
+  .resetbtn{width:100%;border:none;background:transparent;color:var(--stone);font-family:inherit;font-size:12px;cursor:pointer;margin-top:10px;text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="top">
+    <div class="logo">레퍼런스 정리</div>
+    <div class="count" id="count">1 / 12</div>
+  </div>
+  <div class="prog"><i id="bar"></i></div>
+
+  <div class="triage">
+    <h1>참고할 부분을 표시해주세요</h1>
+    <p class="sub">여러 곳 표시 가능 — 표시마다 <b>번호</b>가 생기고, 번호별로 메모를 남길 수 있어요.</p>
+
+    <div class="card">
+      <div class="tools">
+        <div class="tgroup" id="shapeGroup">
+          <button class="tbtn on" data-shape="ellipse"><svg viewBox="0 0 14 14" fill="none"><ellipse cx="7" cy="7" rx="6" ry="5" stroke="currentColor" stroke-width="1.8"/></svg>동그라미</button>
+          <button class="tbtn" data-shape="rect"><svg viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2.5" width="11" height="9" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>네모</button>
+        </div>
+        <div class="tgroup drawlock">
+          <button class="tbtn on" id="drawToggle">✏️ 그리기 켜짐</button>
+        </div>
+        <div class="thint" id="thint">드래그해서 표시하세요 · 그리기를 끄면 화면을 자유롭게 스크롤할 수 있어요</div>
+      </div>
+
+      <div class="imgbox" id="imgbox">
+        <div class="ph" id="ph"></div>
+        <canvas id="cv" class="armed"></canvas>
+        <span class="fname" id="fname"></span>
+      </div>
+
+      <div class="body">
+        <div class="ai"><span class="tag">AI 추정</span><span id="aiText"></span></div>
+
+        <div class="row-label">표시한 부분 메모 <small>같은 메모끼리는 "묶기"로 합쳐요</small></div>
+        <div class="mergebar" id="mergebar">합칠 메모를 선택하세요 — 취소하려면 다시 "취소"를 누르세요</div>
+        <div class="memos" id="memos"><div class="memo-empty">아직 표시가 없어요 — 이미지 전체 참고로 처리됩니다</div></div>
+
+        <div class="row-label">공간 · 기물 <small>보드에서 자동으로 불러와요 — 없으면 직접 입력</small></div>
+        <div class="chips" id="zoneChips"></div>
+        <div class="row-label">뭘 보라는 건가요?</div>
+        <div class="chips" id="whatChips"></div>
+
+        <div class="actions">
+          <button class="skip" id="skip">안 써요</button>
+          <button class="go" id="go">이대로 확정</button>
+        </div>
+      </div>
+    </div>
+    <p class="tip">번호 뱃지를 누르면 묶음에서 분리돼요 · 데스크톱은 마우스, 모바일은 손가락 — 같은 동작</p>
+  </div>
+
+  <div class="summary">
+    <h1>정리 끝났어요</h1>
+    <p class="sub">표시·메모가 이미지에 묶여서 작업자에게 그대로 전달돼요.</p>
+    <div class="sumbox">
+      <h3>정리 결과</h3>
+      <div class="group-row"><span><b>사이니지</b> — 표시 5곳 · 메모 3건</span><span class="n">4장</span></div>
+      <div class="group-row"><span><b>게이트</b> — 표시 2곳 · 메모 1건</span><span class="n">3장</span></div>
+      <div class="group-row"><span><b>회전목마</b> — 표시 4곳 · 메모 2건</span><span class="n">3장</span></div>
+      <div class="group-row"><span><b>전체 무드</b> — 표시 없음(전체 참고)</span><span class="n">2장</span></div>
+    </div>
+    <button class="sendbtn">정리된 보드 보내기</button>
+    <button class="resetbtn" id="reset">데모 다시 보기</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var refs=[
+    {name:"IMG_2841.jpg", zone:"사이니지", what:"재질·질감", art:"linear-gradient(160deg,#8a9bb0 0%,#c9d4de 45%,#e8ddc8 100%)", ai:"버려진 간판 — <b>사이니지 · 낡은 질감</b>으로 보여요"},
+    {name:"화면 캡처 011455.jpg", zone:"게이트", what:"조명", art:"radial-gradient(circle at 30% 25%, #f5d98b 0 6%, transparent 7%),radial-gradient(circle at 55% 18%, #f5d98b 0 5%, transparent 6%),radial-gradient(circle at 78% 30%, #f5d98b 0 6%, transparent 7%),linear-gradient(170deg,#2a3148,#4a5570)", ai:"알전구 스트링 — <b>게이트 · 조명</b>으로 보여요"},
+    {name:"백월도만들까.jpg", zone:"회전목마", what:"형태·구조", art:"linear-gradient(90deg,#d8a8a0 0 62%, #b0b8c4 62% 100%)", ai:"조형물 뒤 백월+단 — <b>회전목마 · 구조</b>로 보여요"}
+  ];
+  var labels=["게이트","티켓부스","회전목마","대관람차","포토부스","기프트샵","사이니지","Click Bear","전체 무드"]; // 보드(ref_zones)에서 자동 로드
+  var whats=["무드·색감","형태·구조","재질·질감","조명","그래픽·서체","배치","소품"];
+
+  var idx=0,total=12,shape="ellipse",armed=true;
+  var anns=[],groups=[],gid=0,mergeSource=null;
+
+  var $=function(id){return document.getElementById(id);};
+  var cv=$("cv"),box=$("imgbox"),ctx=cv.getContext("2d");
+
+  function fit(){cv.width=box.clientWidth;cv.height=box.clientHeight;paint();}
+  window.addEventListener("resize",fit);
+
+  function chipsAdd(el,list,on){
+    chips(el,list,on);
+    var add=document.createElement("button");add.className="chip add";add.textContent="＋ 직접 입력";
+    add.onclick=function(){
+      var inp=document.createElement("input");inp.className="chip-input";inp.placeholder="예: 시계탑";
+      el.replaceChild(inp,add);inp.focus();
+      function commit(){
+        var v=inp.value.trim();
+        el.removeChild(inp);
+        if(v&&list.indexOf(v)===-1){list.push(v);} // 보드 라벨에 저장 → 이후 카드에도 노출
+        chipsAdd(el,list,v||on);
+      }
+      inp.onkeydown=function(ev){if(ev.key==="Enter")commit();if(ev.key==="Escape"){el.removeChild(inp);chipsAdd(el,list,on);}};
+      inp.onblur=commit;
+    };
+    el.appendChild(add);
+  }
+  function chips(el,list,on){el.innerHTML="";list.forEach(function(t){var b=document.createElement("button");b.className="chip"+(t===on?" on":"");b.textContent=t;b.onclick=function(){el.querySelectorAll(".chip").forEach(function(x){x.classList.remove("on");});b.classList.add("on");};el.appendChild(b);});}
+
+  function load(){
+    var r=refs[idx%refs.length];
+    $("ph").style.background=r.art;$("fname").textContent=r.name;$("aiText").innerHTML=r.ai;
+    chipsAdd($("zoneChips"),labels,r.zone);chips($("whatChips"),whats,r.what);
+    anns=[];groups=[];mergeSource=null;$("app").classList.remove("merging");
+    renderMemos();fit();
+    $("count").textContent=(idx+1)+" / "+total;$("bar").style.width=((idx+1)/total*100)+"%";
+  }
+
+  /* ===== drawing ===== */
+  var drag=null;
+  function P(e){var r=cv.getBoundingClientRect();var p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)/r.width,y:(p.clientY-r.top)/r.height};}
+  function down(e){if(!armed)return;drag={a:P(e),b:P(e)};e.preventDefault();}
+  function move(e){if(!drag)return;drag.b=P(e);paint(drag);e.preventDefault();}
+  function up(){
+    if(!drag)return;
+    var a=drag.a,b=drag.b;drag=null;
+    if(Math.abs(a.x-b.x)<0.03&&Math.abs(a.y-b.y)<0.03){paint();return;}
+    var n=anns.length+1;
+    anns.push({n:n,shape:shape,x0:Math.min(a.x,b.x),y0:Math.min(a.y,b.y),x1:Math.max(a.x,b.x),y1:Math.max(a.y,b.y)});
+    groups.push({id:++gid,memo:"",members:[n]});
+    paint();renderMemos(true);
+  }
+  cv.addEventListener("mousedown",down);window.addEventListener("mousemove",move);window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:false});cv.addEventListener("touchmove",move,{passive:false});cv.addEventListener("touchend",up);
+
+  function paint(tmp){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    var all=anns.slice();
+    if(tmp)all.push({shape:shape,x0:Math.min(tmp.a.x,tmp.b.x),y0:Math.min(tmp.a.y,tmp.b.y),x1:Math.max(tmp.a.x,tmp.b.x),y1:Math.max(tmp.a.y,tmp.b.y),tmp:true});
+    all.forEach(function(s){
+      var x=s.x0*cv.width,y=s.y0*cv.height,w=(s.x1-s.x0)*cv.width,h=(s.y1-s.y0)*cv.height;
+      ctx.strokeStyle="#C43A2F";ctx.lineWidth=3;ctx.setLineDash(s.tmp?[6,5]:[]);
+      ctx.beginPath();
+      if(s.shape==="ellipse"){ctx.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,Math.PI*2);}else{ctx.rect(x,y,w,h);}
+      ctx.stroke();ctx.setLineDash([]);
+      if(!s.tmp){
+        ctx.fillStyle="#C43A2F";ctx.beginPath();ctx.arc(x+4,y+4,11,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="#fff";ctx.font="700 12px Pretendard";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(s.n,x+4,y+4.5);
+      }
+    });
+  }
+
+  /* ===== memo groups ===== */
+  function renumber(){
+    anns.forEach(function(a,i){
+      var old=a.n;a.n=i+1;
+      groups.forEach(function(g){g.members=g.members.map(function(m){return m===old?-(i+1):m;});});
+    });
+    groups.forEach(function(g){g.members=g.members.map(function(m){return Math.abs(m);});});
+  }
+
+  function renderMemos(focusNew){
+    var host=$("memos");host.innerHTML="";
+    if(!groups.length){host.innerHTML='<div class="memo-empty">아직 표시가 없어요 — 이미지 전체 참고로 처리됩니다</div>';return;}
+    var merging=mergeSource!==null;
+    $("app").classList.toggle("merging",merging);
+
+    groups.forEach(function(g,gi){
+      var div=document.createElement("div");div.className="mg";
+      if(merging){div.classList.add(g.id===mergeSource?"source":"target");}
+      var head=document.createElement("div");head.className="head";
+
+      g.members.sort(function(a,b){return a-b;}).forEach(function(n){
+        var b=document.createElement("span");b.className="badge";b.textContent=n;b.title="누르면 이 번호를 묶음에서 분리";
+        b.onclick=function(ev){
+          ev.stopPropagation();
+          if(merging)return;
+          if(g.members.length<2)return;
+          g.members=g.members.filter(function(m){return m!==n;});
+          groups.push({id:++gid,memo:g.memo,members:[n]});
+          renderMemos();
+        };
+        head.appendChild(b);
+      });
+      if(g.members.length>1){var s=document.createElement("span");s.className="same";s.textContent="같은 메모";head.appendChild(s);}
+
+      if(groups.length>1){
+        var lk=document.createElement("button");lk.className="linkbtn";
+        lk.textContent=(merging&&g.id===mergeSource)?"취소":"🔗 묶기";
+        lk.onclick=function(ev){
+          ev.stopPropagation();
+          mergeSource=(merging&&g.id===mergeSource)?null:g.id;
+          renderMemos();
+        };
+        head.appendChild(lk);
+      }
+
+      var del=document.createElement("button");del.className="del";del.textContent="×";del.title="이 표시 삭제";
+      del.onclick=function(ev){
+        ev.stopPropagation();
+        anns=anns.filter(function(a){return g.members.indexOf(a.n)===-1;});
+        groups.splice(gi,1);renumber();mergeSource=null;
+        paint();renderMemos();
+      };
+      head.appendChild(del);
+      div.appendChild(head);
+
+      var inp=document.createElement("input");inp.placeholder="이 부분에 대한 메모 (예: 이 질감으로)";inp.value=g.memo;
+      inp.oninput=function(){g.memo=inp.value;};
+      div.appendChild(inp);
+
+      // 묶기 모드에서 타깃 행 클릭 = 병합
+      if(merging&&g.id!==mergeSource){
+        div.onclick=function(){
+          var src=groups.find(function(x){return x.id===mergeSource;});
+          if(!src)return;
+          g.members=g.members.concat(src.members);
+          if(!g.memo&&src.memo)g.memo=src.memo;
+          groups=groups.filter(function(x){return x.id!==mergeSource;});
+          mergeSource=null;renderMemos();
+        };
+      }
+      host.appendChild(div);
+      if(focusNew&&!merging&&gi===groups.length-1)inp.focus();
+    });
+  }
+
+  /* ===== toolbar ===== */
+  document.querySelectorAll("#shapeGroup .tbtn").forEach(function(b){
+    b.onclick=function(){document.querySelectorAll("#shapeGroup .tbtn").forEach(function(x){x.classList.remove("on");});b.classList.add("on");shape=b.dataset.shape;};
+  });
+  $("drawToggle").onclick=function(){
+    armed=!armed;this.classList.toggle("on",armed);
+    this.textContent=armed?"✏️ 그리기 켜짐":"✋ 스크롤 모드";
+    cv.classList.toggle("armed",armed);
+    $("thint").textContent=armed?"드래그해서 표시하세요 · 그리기를 끄면 화면을 자유롭게 스크롤할 수 있어요":"스크롤 모드 — 표시하려면 그리기를 켜세요";
+  };
+
+  function next(){idx++;if(idx>=3){$("app").classList.add("done");return;}load();}
+  $("go").onclick=next;$("skip").onclick=next;
+  $("reset").onclick=function(){idx=0;$("app").classList.remove("done");load();};
+  load();
+})();
+</script>
+</body>
+</html>
