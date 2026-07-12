@@ -4,12 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { ASPECTS } from "@/lib/triage";
 
 /**
- * AI 선분류 (BRIEF Phase 3) — 레퍼런스 정리 트리아지의 사전 단계.
- * 이미지 + 파일명을 Claude에 전달해, 보드의 ref_zones(공간/기물) 안에서 공간을,
- * 참고 요소 7종 중 하나를 추정 → ai_zone_guess / ai_aspect_guess 저장.
- * triage_status는 건드리지 않는다(그대로 pending). 실패 이미지는 배열로 반환.
+ * DEFERRED: 주 경로에서 숨김 (사용자 결정 2026-07-13).
+ * 실무에선 담당자가 업로드하며 존을 직접 지정(1차 라벨) → 파일명 기반 AI 선분류는
+ * 무의미. 라우트·기능은 유지: 클라이언트가 대량 무라벨 덤프를 넘길 때 비전 기반
+ * 보조로 켤 수 있게 보존한다. 트리아지 카드는 ai_zone_guess가 아니라 업로드된
+ * 존(zone_id)을 기본값으로 쓴다.
  *
- * app/api/ai/parse 의 인증·Anthropic 호출·에러 처리 패턴을 재사용.
+ * AI 선분류 — 이미지 + 파일명을 Claude에 전달해 보드 ref_zones(공간/기물)에서
+ * 공간을, 참고 요소 7종 중 하나를 추정 → ai_zone_guess / ai_aspect_guess 저장.
+ * triage_status는 건드리지 않는다(그대로 pending). 인증·호출 패턴은 parse 라우트 재사용.
  */
 
 export const maxDuration = 300;
