@@ -872,6 +872,10 @@ export type Database = {
       }
       ref_images: {
         Row: {
+          ai_aspect_guess: string | null
+          ai_zone_guess: string | null
+          annotation: Json | null
+          aspect: string | null
           created_at: string
           doc_group: string | null
           filename: string | null
@@ -880,7 +884,11 @@ export type Database = {
           kind: string
           memo: string | null
           sort_order: number
+          source_filename: string | null
           starred: boolean
+          triage_status: string
+          triaged_at: string | null
+          triaged_by: string | null
           uploader_id: string
           url: string
           verdict: string | null
@@ -890,6 +898,10 @@ export type Database = {
           zone_id: string
         }
         Insert: {
+          ai_aspect_guess?: string | null
+          ai_zone_guess?: string | null
+          annotation?: Json | null
+          aspect?: string | null
           created_at?: string
           doc_group?: string | null
           filename?: string | null
@@ -898,7 +910,11 @@ export type Database = {
           kind: string
           memo?: string | null
           sort_order?: number
+          source_filename?: string | null
           starred?: boolean
+          triage_status?: string
+          triaged_at?: string | null
+          triaged_by?: string | null
           uploader_id: string
           url: string
           verdict?: string | null
@@ -908,6 +924,10 @@ export type Database = {
           zone_id: string
         }
         Update: {
+          ai_aspect_guess?: string | null
+          ai_zone_guess?: string | null
+          annotation?: Json | null
+          aspect?: string | null
           created_at?: string
           doc_group?: string | null
           filename?: string | null
@@ -916,7 +936,11 @@ export type Database = {
           kind?: string
           memo?: string | null
           sort_order?: number
+          source_filename?: string | null
           starred?: boolean
+          triage_status?: string
+          triaged_at?: string | null
+          triaged_by?: string | null
           uploader_id?: string
           url?: string
           verdict?: string | null
@@ -926,6 +950,13 @@ export type Database = {
           zone_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ref_images_triaged_by_fkey"
+            columns: ["triaged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ref_images_uploader_id_fkey"
             columns: ["uploader_id"]
@@ -955,6 +986,7 @@ export type Database = {
           board_id: string
           created_at: string
           id: string
+          kind: string
           sort_order: number
           title: string
         }
@@ -963,6 +995,7 @@ export type Database = {
           board_id: string
           created_at?: string
           id?: string
+          kind?: string
           sort_order?: number
           title: string
         }
@@ -971,6 +1004,7 @@ export type Database = {
           board_id?: string
           created_at?: string
           id?: string
+          kind?: string
           sort_order?: number
           title?: string
         }
@@ -1237,6 +1271,7 @@ export type Database = {
       can_edit_board: { Args: { p_board_id: string }; Returns: boolean }
       can_edit_zone: { Args: { p_zone_id: string }; Returns: boolean }
       can_view_board: { Args: { p_board_id: string }; Returns: boolean }
+      has_ai_items_in_set: { Args: { p_set_id: string }; Returns: boolean }
       is_assigned_to_client: { Args: { p_client_id: string }; Returns: boolean }
       is_assigned_to_project: {
         Args: { p_project_id: string }
