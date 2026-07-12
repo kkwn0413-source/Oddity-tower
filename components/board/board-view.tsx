@@ -613,6 +613,14 @@ export function BoardView({
                 {editing ? "편집 완료" : "편집"}
               </PillBtn>
             )}
+            {canEdit && (
+              <Link
+                href={`/boards/${board.id}/triage`}
+                className="rounded-full border border-gold-bright/60 bg-gold-bright/10 px-3.5 py-1.5 text-xs font-semibold text-gold-bright hover:bg-gold-bright/20"
+              >
+                레퍼런스 정리
+              </Link>
+            )}
             <Link
               href="/boards"
               className="rounded-full border border-board-line bg-board-panel px-3.5 py-1.5 text-xs text-board-mut hover:text-board-ink"
