@@ -14,6 +14,10 @@ import { ASPECTS } from "@/lib/triage";
 
 export const maxDuration = 300;
 
+// 분류 모델 — 사용자 결정으로 Haiku 4.5 (비전 분류 5배 저렴, 파일명 신호 기반이라
+// 품질 충분 — 2026-07-13). CLASSIFY_MODEL 환경변수로 재정의 가능.
+const CLASSIFY_MODEL = process.env.CLASSIFY_MODEL || "claude-haiku-4-5";
+
 const CHUNK = 10; // Claude 비전 호출당 이미지 수 (토큰/크기 안정 범위)
 
 const OUTPUT_SCHEMA = {
@@ -124,6 +128,33 @@ export async function POST(req: Request) {
   const validAspects = new Set<string>(ASPECTS);
   const anthropic = new Anthropic();
 
+  // URL 대신 서버에서 이미지를 받아 base64로 전달 — Anthropic URL 페처의
+  // robots.txt 차단(picsum·일부 CDN)을 우회하고 어떤 출처든 안정적으로 처리.
+  const MAX_BYTES = 5 * 1024 * 1024; // 이미지당 5MB 상한
+  async function fetchAsImageBlock(
+    url: string,
+  ): Promise<Anthropic.ImageBlockParam | null> {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const ct = res.headers.get("content-type") ?? "";
+      const type = ct.split(";")[0].trim().toLowerCase();
+      const media = (
+        ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(type)
+          ? type
+          : "image/jpeg"
+      ) as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length === 0 || buf.length > MAX_BYTES) return null;
+      return {
+        type: "image",
+        source: { type: "base64", media_type: media, data: buf.toString("base64") },
+      };
+    } catch {
+      return null;
+    }
+  }
+
   const classified: {
     id: string;
     zone_guess: string | null;
@@ -133,27 +164,43 @@ export async function POST(req: Request) {
   const failed: { id: string; reason: string }[] = [];
 
   for (let c = 0; c < targets.length; c += CHUNK) {
-    const chunk = targets.slice(c, c + CHUNK);
-    // 비전 메시지: 각 이미지 앞에 [이미지 N] 파일명 텍스트 → 이미지 블록
+    const rawChunk = targets.slice(c, c + CHUNK);
+    // 비전 메시지: 각 이미지 앞에 [이미지 N] 파일명 텍스트 → base64 이미지 블록.
+    // 이미지 로드 실패는 그 이미지만 failed로 빼고 나머지는 진행.
     const content: Anthropic.ContentBlockParam[] = [];
-    chunk.forEach((img, i) => {
+    const chunk: typeof rawChunk = [];
+    for (const img of rawChunk) {
+      const block = await fetchAsImageBlock(img.url);
+      if (!block) {
+        failed.push({ id: img.id, reason: "이미지를 불러오지 못했습니다" });
+        continue;
+      }
+      const i = chunk.length;
       const fname = img.source_filename ?? allowed.get(img.id) ?? "(파일명 없음)";
       content.push({ type: "text", text: `[이미지 ${i}] 파일명: ${fname}` });
-      content.push({ type: "image", source: { type: "url", url: img.url } });
-    });
+      content.push(block);
+      chunk.push(img);
+    }
+    if (chunk.length === 0) continue;
     content.push({
       type: "text",
       text: "위 이미지 각각에 대해 index(0부터), zone_guess, aspect_guess, one_liner를 반환하라.",
     });
 
     try {
+      // 토큰 최소화: 분류는 단순 작업 — 확장 사고 끔(thinking 미지정 = off),
+      // 출력은 작은 JSON이라 max_tokens 축소. 파일명이 최강 신호라 저사고로 충분.
+      // effort는 4.6+ 모델 전용(Haiku 4.5는 미지원 → 400)이라 모델에 따라 조건부.
+      const supportsEffort = !/haiku|sonnet-4-5/.test(CLASSIFY_MODEL);
       const response = await anthropic.messages.create({
-        model: "claude-opus-4-8",
-        max_tokens: 8000,
-        thinking: { type: "adaptive" },
+        model: CLASSIFY_MODEL,
+        max_tokens: 1500,
         system,
         messages: [{ role: "user", content }],
-        output_config: { format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
+        output_config: {
+          format: { type: "json_schema", schema: OUTPUT_SCHEMA },
+          ...(supportsEffort ? { effort: "low" as const } : {}),
+        },
       });
       const textBlock = response.content.find((b) => b.type === "text");
       if (!textBlock || textBlock.type !== "text") throw new Error("응답에 결과가 없습니다.");
